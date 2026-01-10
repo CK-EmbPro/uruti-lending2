@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    .container {
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      background-color: #2563eb;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      border-radius: 8px 8px 0 0;
+      margin: -30px -30px 30px -30px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .content {
+      margin: 20px 0;
+    }
+    .status-box {
+      padding: 20px;
+      border-radius: 6px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .status-approved {
+      background-color: #d1fae5;
+      border-left: 4px solid #10b981;
+      color: #065f46;
+    }
+    .status-rejected {
+      background-color: #fee2e2;
+      border-left: 4px solid #ef4444;
+      color: #991b1b;
+    }
+    .status-pending {
+      background-color: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      color: #92400e;
+    }
+    .status-box h2 {
+      margin: 0 0 10px 0;
+      font-size: 20px;
+    }
+    .application-details {
+      background-color: #f9fafb;
+      padding: 20px;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+    .application-details p {
+      margin: 8px 0;
+      font-size: 14px;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 30px;
+      background-color: #2563eb;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      margin: 20px 0;
+      font-weight: bold;
+    }
+    .footer {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      color: #6b7280;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Loan Application Update</h1>
+    </div>
+    
+    <div class="content">
+      <p>Dear {{customerName}},</p>
+      
+      <p>We have an update regarding your loan application.</p>
+      
+      <div class="application-details">
+        <p><strong>Application ID:</strong> {{applicationId}}</p>
+      </div>
+      
+      <div class="status-box status-{{status}}">
+        <h2>Status: {{status}}</h2>
+      </div>
+      
+      {{#if message}}
+      <div style="margin: 20px 0; padding: 15px; background-color: #f9fafb; border-radius: 6px;">
+        <p><strong>Message:</strong></p>
+        <p>{{message}}</p>
+      </div>
+      {{/if}}
+      
+      {{#if (eq status "APPROVED")}}
+      <div style="text-align: center;">
+        <a href="https://app.urutilending.com/loans/{{applicationId}}" class="button">View Loan Details</a>
+      </div>
+      {{/if}}
+      
+      {{#if (eq status "PENDING")}}
+      <p>We are currently reviewing your application. We will notify you once a decision has been made.</p>
+      {{/if}}
+      
+      <p>If you have any questions, please contact our customer service team.</p>
+      
+      <p>Best regards,<br>
+      <strong>Uruti Lending Team</strong></p>
+    </div>
+    
+    <div class="footer">
+      <p>© 2024 Uruti Lending. All rights reserved.</p>
+      <p>This is an automated message. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>

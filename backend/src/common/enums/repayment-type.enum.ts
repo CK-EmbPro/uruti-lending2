@@ -1,0 +1,20 @@
+export enum RepaymentType {
+  NORMAL_REPAYMENT = 'Normal Repayment',
+  INTEREST_WAIVER = 'Interest Waiver',
+  PENALTY_WAIVER = 'Penalty Waiver',
+  CHARGES_WAIVER = 'Charges Waiver',
+  PRINCIPAL_CAPITALIZATION = 'Principal Capitalization',
+  PRINCIPAL_ADJUSTMENT = 'Principal Adjustment',
+  INTEREST_CARRY_FORWARD = 'Interest Carry Forward',
+  WRITE_OFF_RECOVERY = 'Write Off Recovery',
+  SECURITY_DEPOSIT_ADJUSTMENT = 'Security Deposit Adjustment',
+  ADVANCE_PAYMENT = 'Advance Payment',
+  PRE_PAYMENT = 'Pre Payment',
+  SUBSIDY_ADJUSTMENTS = 'Subsidy Adjustments',
+  LOAN_CLOSURE = 'Loan Closure',
+  PARTIAL_SETTLEMENT = 'Partial Settlement',
+  FULL_SETTLEMENT = 'Full Settlement',
+  WRITE_OFF_SETTLEMENT = 'Write Off Settlement',
+  CHARGE_PAYMENT = 'Charge Payment',
+}
+
