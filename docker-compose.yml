@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  db:
+    image: mariadb:10.11
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --skip-character-set-client-handshake
+    volumes:
+      - db-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-padmin"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+
+  redis-cache:
+    image: redis:alpine
+    volumes:
+      - redis-cache-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-queue:
+    image: redis:alpine
+    volumes:
+      - redis-queue-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frappe:
+    image: frappe/bench:latest
+    command: sleep infinity
+    volumes:
+      - sites-data:/workspace/frappe-bench/sites
+      - assets-data:/workspace/frappe-bench/sites/assets
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - REDIS_CACHE=redis-cache:6379
+      - REDIS_QUEUE=redis-queue:6379
+      - SOCKETIO_PORT=9000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+      redis-queue:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    stdin_open: true
+    tty: true
+
+volumes:
+  db-data:
+  redis-cache-data:
+  redis-queue-data:
+  sites-data:
+  assets-data:
+
