@@ -40,7 +40,7 @@ export class ChatbotService {
     private readonly aiEligibilityAssessmentService: AIEligibilityAssessmentService,
   ) {
     this.aiProvider = this.configService.get('AI_PROVIDER') || 'gemini';
-    this.geminiApiKey = this.configService.get('GEMINI_API_KEY') || 'AIzaSyAm2CPlhA-i7fKVKnJzMkDkT3queSx073E';
+    this.geminiApiKey = this.configService.get('GEMINI_API_KEY') || '';
     this.openaiApiKey = this.configService.get('OPENAI_API_KEY');
     this.useAI = !!(this.geminiApiKey || this.openaiApiKey);
   }
