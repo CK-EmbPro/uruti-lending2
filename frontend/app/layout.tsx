@@ -10,8 +10,6 @@ import ChatbotProvider from "@/components/chatbot/ChatbotProvider";
 export const metadata: Metadata = {
   title: "Uruti Lending Platform",
   description: "Comprehensive loan management system",
-  // Favicon will be handled by Next.js automatically if icon.ico exists in app directory
-  // or can be added to public directory
 };
 
 export default function RootLayout({
@@ -20,15 +18,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+          rel="stylesheet"
+        />
+      </head>
+      <body suppressHydrationWarning>
         <ErrorBoundary>
           <QueryProvider>
             <AuthProvider>
               <CustomerPortalProvider>
                 {children}
                 <ChatbotProvider />
-                <Toaster position="top-right" />
+                <Toaster
+                  position="top-right"
+                  toastOptions={{
+                    duration: 3000,
+                    style: {
+                      background: "#363636",
+                      color: "#fff",
+                    },
+                  }}
+                />
               </CustomerPortalProvider>
             </AuthProvider>
           </QueryProvider>

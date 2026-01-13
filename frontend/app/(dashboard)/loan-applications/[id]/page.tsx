@@ -275,13 +275,13 @@ export default function LoanApplicationDetailPage() {
                       <div>
                         <dt className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">Loan Product</dt>
                         <dd className="text-sm font-semibold text-gray-900">
-                          {isLoadingLoanProduct ? 'Loading...' : loanProduct?.name || 'N/A'}
+                          {isLoadingLoanProduct ? 'Loading...' : loanProduct?.productName || 'N/A'}
                         </dd>
                       </div>
                       <div>
                         <dt className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">Is Term Loan</dt>
                         <dd className="text-sm font-semibold text-gray-900">
-                          {application.isTermLoan ? (
+                          {loanProduct?.isTermLoan ? (
                             <Badge variant="success" size="sm">Yes</Badge>
                           ) : (
                             <Badge variant="default" size="sm">No</Badge>
@@ -441,7 +441,7 @@ export default function LoanApplicationDetailPage() {
                     <div>
                       <h4 className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">Posting Date</h4>
                       <p className="text-sm font-semibold text-gray-900">
-                        {application.postingDate ? format(new Date(application.postingDate), 'MMM d, yyyy') : 'N/A'}
+                        {application.applicationDate ? format(new Date(application.applicationDate), 'MMM d, yyyy') : 'N/A'}
                       </p>
                     </div>
                   </div>

@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCreateLoanApplication } from "@/lib/hooks/useLoanApplication";
 import { useLoanProducts } from "@/lib/hooks/useLoanProduct";
 import { useCompanies } from "@/lib/hooks/useCompany";
@@ -144,6 +145,7 @@ const DRAFT_STORAGE_KEY = "loan-application-draft";
 
 export function MultiStepLoanApplicationForm() {
   const router = useRouter();
+  const { isAuthenticated, user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -179,6 +181,25 @@ export function MultiStepLoanApplicationForm() {
     },
   });
 
+  // Watch loanAmount and loanProductId for validation
+  const loanAmount = form.watch("loanAmount");
+  const loanProductId = form.watch("loanProductId");
+
+  // Find selected product
+  const selectedProduct = loanProducts?.find((p) => p.id === loanProductId);
+
+  // Check if loan amount exceeds maximum loan amount
+  const checkLoanAmountExceedsMax = () => {
+    if (!selectedProduct || !loanAmount) return false;
+
+    const enteredAmount = parseFloat(loanAmount);
+    const maxAmount = selectedProduct.maximumLoanAmount || 0;
+
+    return !isNaN(enteredAmount) && enteredAmount > maxAmount;
+  };
+
+  const loanAmountExceedsMax = checkLoanAmountExceedsMax();
+
   // Load draft from localStorage on mount
   useEffect(() => {
     const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
@@ -206,6 +227,22 @@ export function MultiStepLoanApplicationForm() {
 
     return () => subscription.unsubscribe();
   }, [form]);
+
+  // Validate loan amount against maximum loan amount when loanAmount or loanProductId changes
+  useEffect(() => {
+    if (loanAmount && selectedProduct) {
+      const enteredAmount = parseFloat(loanAmount);
+      const maxAmount = selectedProduct.maximumLoanAmount || 0;
+
+      if (!isNaN(enteredAmount) && enteredAmount > maxAmount) {
+        // You can set a custom error if you want
+        // form.setError("loanAmount", {
+        //   type: "manual",
+        //   message: `Loan amount exceeds maximum allowed amount of $${maxAmount.toLocaleString()}`
+        // });
+      }
+    }
+  }, [loanAmount, selectedProduct, form]);
 
   const validateStep = async (step: number): Promise<boolean> => {
     let fieldsToValidate: (keyof FormData)[] = [];
@@ -238,6 +275,19 @@ export function MultiStepLoanApplicationForm() {
     }
 
     const result = await form.trigger(fieldsToValidate);
+
+    // Additional validation for step 1: check if loan amount exceeds maximum
+    if (step === 1 && result) {
+      if (loanAmountExceedsMax) {
+        toast.error(
+          `Loan amount exceeds maximum allowed amount of ${
+            selectedProduct?.maximumLoanAmount?.toLocaleString() || 0
+          } FRW`
+        );
+        return false;
+      }
+    }
+
     return result;
   };
 
@@ -248,7 +298,7 @@ export function MultiStepLoanApplicationForm() {
       // Scroll to top of form
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      toast.error("Please fill in all required fields correctly");
+      // Error message is already shown in validateStep
     }
   };
 
@@ -274,8 +324,27 @@ export function MultiStepLoanApplicationForm() {
   };
 
   const handleSubmit = async (data: FormData) => {
+    // Check authentication first
+    if (!isAuthenticated) {
+      toast.error("Please log in first to submit your loan application", {
+        icon: "🔐",
+      });
+      router.push("/login");
+      return;
+    }
+
     if (!data.agreedToTerms) {
       toast.error("Please agree to the Terms and Conditions");
+      return;
+    }
+
+    // Check if loan amount exceeds maximum
+    if (selectedProduct && loanAmountExceedsMax) {
+      toast.error(
+        `Loan amount exceeds maximum allowed amount of ${
+          selectedProduct.maximumLoanAmount?.toLocaleString() || 0
+        } FRW`
+      );
       return;
     }
 
@@ -284,25 +353,24 @@ export function MultiStepLoanApplicationForm() {
         (p) => p.id === data.loanProductId
       );
 
+      // ✅ CORRECTED: Match backend DTO exactly
       const applicationData = {
-        applicantType: "Customer",
+        // Required fields
         companyId: data.companyId,
+        applicantType: "Customer", // Matches ApplicantType enum
+        applicantId: user?.id ?? "", // ✅ Using email as temporary applicantId
         loanProductId: data.loanProductId,
-        loanAmount: parseFloat(data.loanAmount),
-        isTermLoan: selectedProduct?.isTermLoan || false,
-        isSecuredLoan:
-          selectedProduct?.requiresCollateral ||
-          selectedProduct?.productType === "Secured" ||
-          selectedProduct?.isSecuredLoan ||
-          false,
-        rateOfInterest: selectedProduct?.rateOfInterest || 0,
-        postingDate: new Date().toISOString().split("T")[0],
-        description: data.loanPurpose,
-        applicantPhoneNumber: data.phoneNumber,
-        applicantEmailAddress: data.email,
+        requestedAmount: parseFloat(data.loanAmount), // ✅ Correct field name
+
+        // Optional fields
+        remarks: data.loanPurpose, // ✅ Correct field name
+        applicationDate: new Date().toISOString().split("T")[0],
+        repaymentStructure: "FIXED", // Default value
       };
 
-      await createApplication.mutateAsync(applicationData as any);
+      console.log("Submitting application data:", applicationData);
+
+      await createApplication.mutateAsync(applicationData);
 
       // Clear draft after successful submission
       localStorage.removeItem(DRAFT_STORAGE_KEY);
@@ -310,16 +378,16 @@ export function MultiStepLoanApplicationForm() {
       toast.success("Application submitted successfully!", { icon: "✅" });
       router.push("/loan-applications");
     } catch (error: any) {
+      console.error("Submission error:", error);
       toast.error(
-        error.response?.data?.message || "Failed to submit application"
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to submit application"
       );
     }
   };
 
   const progressPercentage = ((currentStep - 1) / (STEPS.length - 1)) * 100;
-  const selectedProduct = loanProducts?.find(
-    (p) => p.id === form.watch("loanProductId")
-  );
 
   // Calculate monthly expenses
   const monthlyExpenses = [
@@ -679,6 +747,12 @@ export function MultiStepLoanApplicationForm() {
                                     Interest Rate:{" "}
                                     {selectedProduct.rateOfInterest}%
                                   </li>
+                                  <li>
+                                    Maximum amount:{" "}
+                                    {selectedProduct.maximumLoanAmount?.toLocaleString() ||
+                                      "N/A"}{" "}
+                                    FRW
+                                  </li>
                                   {selectedProduct.isTermLoan && (
                                     <li>Type: Term Loan</li>
                                   )}
@@ -707,7 +781,7 @@ export function MultiStepLoanApplicationForm() {
                           </Tooltip>
                         </div>
                         <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <div className="absolute inset-y-0 left-0  pl-3 flex items-center pointer-events-none">
                             <DollarSign className="h-5 w-5 text-gray-400" />
                           </div>
                           <Input
@@ -716,61 +790,98 @@ export function MultiStepLoanApplicationForm() {
                             placeholder="50,000"
                             className="pl-10"
                             {...form.register("loanAmount")}
-                            error={form.formState.errors.loanAmount?.message}
+                            error={
+                              loanAmountExceedsMax
+                                ? `Loan amount exceeds maximum allowed amount of ${
+                                    selectedProduct?.maximumLoanAmount?.toLocaleString() ||
+                                    0
+                                  } FRW`
+                                : form.formState.errors.loanAmount?.message
+                            }
                             required
                             helperText="Enter the amount you wish to borrow (numbers only, no commas)"
                           />
                         </div>
-                        <p className="mt-1 text-xs text-gray-500">
-                          💡 <strong>Tip:</strong> Only borrow what you need.
-                          The monthly payment estimate will update as you type.
-                        </p>
-                        {form.watch("loanAmount") && selectedProduct && (
-                          <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        {loanAmountExceedsMax && selectedProduct && (
+                          <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                             <div className="flex items-start gap-2">
-                              <Info className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                              <div className="text-xs text-green-800">
+                              <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                              <div className="text-xs text-red-800">
                                 <p className="font-medium">
-                                  Estimated Monthly Payment:
+                                  Amount Exceeds Limit:
                                 </p>
-                                <p className="mt-1 text-base font-bold">
-                                  $
-                                  {(
-                                    (parseFloat(
-                                      form.watch("loanAmount") || "0"
-                                    ) *
-                                      (selectedProduct.rateOfInterest /
-                                        100 /
-                                        12) *
-                                      Math.pow(
-                                        1 +
-                                          selectedProduct.rateOfInterest /
-                                            100 /
-                                            12,
-                                        parseInt(form.watch("loanTerm") || "12")
-                                      )) /
-                                    (Math.pow(
-                                      1 +
-                                        selectedProduct.rateOfInterest /
-                                          100 /
-                                          12,
-                                      parseInt(form.watch("loanTerm") || "12")
-                                    ) -
-                                      1)
-                                  ).toLocaleString("en-US", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })}
+                                <p className="mt-1">
+                                  The entered amount (
+                                  {parseFloat(
+                                    loanAmount || "0"
+                                  ).toLocaleString()}{" "}
+                                  FRW) exceeds the maximum allowed amount of{" "}
+                                  {selectedProduct.maximumLoanAmount?.toLocaleString()}{" "}
+                                  FRW for this product.
                                 </p>
-                                <p className="mt-1 text-gray-600">
-                                  Based on {form.watch("loanTerm") || "12"}{" "}
-                                  months at {selectedProduct.rateOfInterest}%
-                                  APR
+                                <p className="mt-1 font-medium">
+                                  Please enter an amount less than or equal to{" "}
+                                  {selectedProduct.maximumLoanAmount?.toLocaleString()}{" "}
+                                  FRW.
                                 </p>
                               </div>
                             </div>
                           </div>
                         )}
+                        <p className="mt-1 text-xs text-gray-500">
+                          💡 <strong>Tip:</strong> Only borrow what you need.
+                          The monthly payment estimate will update as you type.
+                        </p>
+                        {form.watch("loanAmount") &&
+                          selectedProduct &&
+                          !loanAmountExceedsMax && (
+                            <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <Info className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                                <div className="text-xs text-green-800">
+                                  <p className="font-medium">
+                                    Estimated Monthly Payment:
+                                  </p>
+                                  <p className="mt-1 text-base font-bold">
+                                    {(
+                                      (parseFloat(
+                                        form.watch("loanAmount") || "0"
+                                      ) *
+                                        (selectedProduct.rateOfInterest /
+                                          100 /
+                                          12) *
+                                        Math.pow(
+                                          1 +
+                                            selectedProduct.rateOfInterest /
+                                              100 /
+                                              12,
+                                          parseInt(
+                                            form.watch("loanTerm") || "12"
+                                          )
+                                        )) /
+                                      (Math.pow(
+                                        1 +
+                                          selectedProduct.rateOfInterest /
+                                            100 /
+                                            12,
+                                        parseInt(form.watch("loanTerm") || "12")
+                                      ) -
+                                        1)
+                                    ).toLocaleString("en-US", {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    })}{" "}
+                                    FRW
+                                  </p>
+                                  <p className="mt-1 text-gray-600">
+                                    Based on {form.watch("loanTerm") || "12"}{" "}
+                                    months at {selectedProduct.rateOfInterest}%
+                                    APR
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                       </div>
 
                       <div>
@@ -913,11 +1024,22 @@ export function MultiStepLoanApplicationForm() {
                               <span className="text-gray-500 font-medium">
                                 Loan Amount
                               </span>
-                              <span className="font-semibold text-gray-900 text-lg">
-                                $
+                              <span
+                                className={`font-semibold ${
+                                  loanAmountExceedsMax
+                                    ? "text-red-600"
+                                    : "text-gray-900"
+                                } text-lg`}
+                              >
                                 {parseFloat(
                                   form.watch("loanAmount") || "0"
-                                ).toLocaleString()}
+                                ).toLocaleString()}{" "}
+                                FRW
+                                {loanAmountExceedsMax && (
+                                  <span className="ml-2 text-xs font-normal text-red-500">
+                                    (Exceeds limit)
+                                  </span>
+                                )}
                               </span>
                             </div>
                             <div className="flex flex-col gap-1">
@@ -942,15 +1064,25 @@ export function MultiStepLoanApplicationForm() {
                                   : "N/A"}
                               </span>
                             </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-gray-500 font-medium">
+                                Maximum Allowed Amount
+                              </span>
+                              <span className="font-semibold text-gray-900">
+                                {selectedProduct?.maximumLoanAmount?.toLocaleString() ||
+                                  "N/A"}{" "}
+                                FRW
+                              </span>
+                            </div>
                             {form.watch("loanAmount") &&
                               selectedProduct &&
-                              form.watch("loanTerm") && (
+                              form.watch("loanTerm") &&
+                              !loanAmountExceedsMax && (
                                 <div className="flex flex-col gap-1">
                                   <span className="text-gray-500 font-medium">
                                     Estimated Monthly Payment
                                   </span>
                                   <span className="font-semibold text-gray-900 text-lg">
-                                    $
                                     {(
                                       (parseFloat(
                                         form.watch("loanAmount") || "0"
@@ -978,7 +1110,8 @@ export function MultiStepLoanApplicationForm() {
                                     ).toLocaleString("en-US", {
                                       minimumFractionDigits: 2,
                                       maximumFractionDigits: 2,
-                                    })}
+                                    })}{" "}
+                                    FRW
                                   </span>
                                 </div>
                               )}
@@ -1233,6 +1366,70 @@ export function MultiStepLoanApplicationForm() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Personal Info Summary - shown on Step 2 */}
+                    {(form.watch("fullName") ||
+                      form.watch("email") ||
+                      form.watch("phoneNumber")) && (
+                      <div className="mt-8 pt-6 border-t border-gray-200">
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <User className="w-5 h-5 text-blue-600" />
+                            Personal Details Summary
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm bg-gray-50 border border-gray-200 rounded-lg p-4 md:p-6">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-gray-500 font-medium">
+                                Full Name
+                              </span>
+                              <span className="font-semibold text-gray-900">
+                                {form.watch("fullName") || "N/A"}
+                              </span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-gray-500 font-medium">
+                                Email Address
+                              </span>
+                              <span className="font-semibold text-gray-900">
+                                {form.watch("email") || "N/A"}
+                              </span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-gray-500 font-medium">
+                                Phone Number
+                              </span>
+                              <span className="font-semibold text-gray-900">
+                                {form.watch("phoneNumber") || "N/A"}
+                              </span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-gray-500 font-medium">
+                                Date of Birth
+                              </span>
+                              <span className="font-semibold text-gray-900">
+                                {form.watch("dateOfBirth")
+                                  ? new Date(
+                                      form.watch("dateOfBirth")
+                                    ).toLocaleDateString("en-US", {
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
+                                    })
+                                  : "N/A"}
+                              </span>
+                            </div>
+                            <div className="md:col-span-2 flex flex-col gap-1">
+                              <span className="text-gray-500 font-medium">
+                                Address
+                              </span>
+                              <span className="font-semibold text-gray-900">
+                                {form.watch("address") || "N/A"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1600,11 +1797,11 @@ export function MultiStepLoanApplicationForm() {
                               Monthly Income
                             </p>
                             <p className="text-xl font-bold text-gray-900">
-                              $
                               {monthlyIncome.toLocaleString("en-US", {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
-                              })}
+                              })}{" "}
+                              FRW
                             </p>
                           </div>
                           <div className="bg-white rounded-lg p-4 border border-blue-100">
@@ -1612,11 +1809,11 @@ export function MultiStepLoanApplicationForm() {
                               Monthly Expenses
                             </p>
                             <p className="text-xl font-bold text-gray-900">
-                              $
                               {monthlyExpenses.toLocaleString("en-US", {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
-                              })}
+                              })}{" "}
+                              FRW
                             </p>
                           </div>
                           <div className="bg-white rounded-lg p-4 border border-blue-100">
@@ -1648,14 +1845,14 @@ export function MultiStepLoanApplicationForm() {
                               Disposable Income
                             </p>
                             <p className="text-xl font-bold text-gray-900">
-                              $
                               {(monthlyIncome - monthlyExpenses).toLocaleString(
                                 "en-US",
                                 {
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2,
                                 }
-                              )}
+                              )}{" "}
+                              FRW
                             </p>
                           </div>
                         </div>
@@ -1711,14 +1908,25 @@ export function MultiStepLoanApplicationForm() {
                           <p className="text-sm text-gray-600 mb-1">
                             Loan Amount
                           </p>
-                          <p className="text-2xl font-bold text-gray-900">
-                            $
+                          <p
+                            className={`text-2xl font-bold ${
+                              loanAmountExceedsMax
+                                ? "text-red-600"
+                                : "text-gray-900"
+                            }`}
+                          >
                             {parseFloat(
                               form.watch("loanAmount") || "0"
                             ).toLocaleString("en-US", {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
-                            })}
+                            })}{" "}
+                            FRW
+                            {loanAmountExceedsMax && (
+                              <span className="block text-xs font-normal text-red-500 mt-1">
+                                (Exceeds limit)
+                              </span>
+                            )}
                           </p>
                         </div>
                         <div>
@@ -1742,16 +1950,41 @@ export function MultiStepLoanApplicationForm() {
                           </p>
                         </div>
                       </div>
+                      {loanAmountExceedsMax && selectedProduct && (
+                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                            <div className="text-sm text-red-800">
+                              <p className="font-medium">
+                                Loan Amount Exceeds Maximum Limit:
+                              </p>
+                              <p className="mt-1">
+                                Your loan amount (
+                                {parseFloat(
+                                  form.watch("loanAmount") || "0"
+                                ).toLocaleString()}{" "}
+                                FRW) exceeds the maximum allowed amount of{" "}
+                                {selectedProduct.maximumLoanAmount?.toLocaleString()}{" "}
+                                FRW for this product.
+                              </p>
+                              <p className="mt-1 font-medium">
+                                Please go back to Step 1 and adjust your loan
+                                amount to continue.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       {form.watch("loanAmount") &&
                         selectedProduct &&
-                        form.watch("loanTerm") && (
+                        form.watch("loanTerm") &&
+                        !loanAmountExceedsMax && (
                           <div className="mt-4 pt-4 border-t border-primary/20">
                             <div className="flex items-center justify-between">
                               <p className="text-sm font-medium text-gray-700">
                                 Estimated Monthly Payment
                               </p>
                               <p className="text-xl font-bold text-primary">
-                                $
                                 {(
                                   (parseFloat(form.watch("loanAmount") || "0") *
                                     (selectedProduct.rateOfInterest /
@@ -1773,7 +2006,8 @@ export function MultiStepLoanApplicationForm() {
                                 ).toLocaleString("en-US", {
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2,
-                                })}
+                                })}{" "}
+                                FRW
                               </p>
                             </div>
                           </div>
@@ -1822,11 +2056,22 @@ export function MultiStepLoanApplicationForm() {
                             <span className="text-gray-500 font-medium">
                               Loan Amount
                             </span>
-                            <span className="font-semibold text-gray-900 text-lg">
-                              $
+                            <span
+                              className={`font-semibold ${
+                                loanAmountExceedsMax
+                                  ? "text-red-600"
+                                  : "text-gray-900"
+                              } text-lg`}
+                            >
                               {parseFloat(
                                 form.watch("loanAmount") || "0"
-                              ).toLocaleString()}
+                              ).toLocaleString()}{" "}
+                              FRW
+                              {loanAmountExceedsMax && (
+                                <span className="ml-2 text-xs font-normal text-red-500">
+                                  (Exceeds limit)
+                                </span>
+                              )}
                             </span>
                           </div>
                           <div className="flex flex-col gap-1">
@@ -1847,6 +2092,16 @@ export function MultiStepLoanApplicationForm() {
                                     parseInt(form.watch("loanTerm")) / 12
                                   )} years (${form.watch("loanTerm")} months)`
                                 : "N/A"}
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-gray-500 font-medium">
+                              Maximum Allowed Amount
+                            </span>
+                            <span className="font-semibold text-gray-900">
+                              {selectedProduct?.maximumLoanAmount?.toLocaleString() ||
+                                "N/A"}{" "}
+                              FRW
                             </span>
                           </div>
                         </div>
@@ -1942,10 +2197,10 @@ export function MultiStepLoanApplicationForm() {
                               Annual Income
                             </span>
                             <span className="font-semibold text-gray-900">
-                              $
                               {parseFloat(
                                 form.watch("annualIncome") || "0"
-                              ).toLocaleString()}
+                              ).toLocaleString()}{" "}
+                              FRW
                             </span>
                           </div>
                           <div className="flex flex-col gap-1">
@@ -1961,10 +2216,10 @@ export function MultiStepLoanApplicationForm() {
                               Monthly Rent/Mortgage
                             </span>
                             <span className="font-semibold text-gray-900">
-                              $
                               {parseFloat(
                                 form.watch("monthlyRentMortgage") || "0"
-                              ).toLocaleString()}
+                              ).toLocaleString()}{" "}
+                              FRW
                             </span>
                           </div>
                           <div className="flex flex-col gap-1">
@@ -1972,10 +2227,10 @@ export function MultiStepLoanApplicationForm() {
                               Other Monthly Expenses
                             </span>
                             <span className="font-semibold text-gray-900">
-                              $
                               {parseFloat(
                                 form.watch("otherMonthlyExpenses") || "0"
-                              ).toLocaleString()}
+                              ).toLocaleString()}{" "}
+                              FRW
                             </span>
                           </div>
                           {monthlyExpenses > 0 && (
@@ -1984,11 +2239,11 @@ export function MultiStepLoanApplicationForm() {
                                 Total Monthly Expenses
                               </span>
                               <span className="font-semibold text-gray-900 text-lg">
-                                $
                                 {monthlyExpenses.toLocaleString("en-US", {
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2,
-                                })}
+                                })}{" "}
+                                FRW
                               </span>
                             </div>
                           )}
@@ -2047,7 +2302,7 @@ export function MultiStepLoanApplicationForm() {
                       type="button"
                       variant="outline"
                       onClick={handleBack}
-                      className="w-full sm:w-auto"
+                      className="w-full sm:w-auto flex  items-center"
                     >
                       <ArrowLeft className="w-4 h-4 mr-2" />
                       Back
@@ -2058,7 +2313,8 @@ export function MultiStepLoanApplicationForm() {
                       <Button
                         type="button"
                         onClick={handleNext}
-                        className="w-full sm:w-auto min-w-[140px]"
+                        disabled={loanAmountExceedsMax}
+                        className="w-full sm:w-auto min-w-[140px] flex  items-center"
                       >
                         Continue
                         <ArrowRight className="w-4 h-4 ml-2" />
@@ -2068,10 +2324,11 @@ export function MultiStepLoanApplicationForm() {
                         type="submit"
                         disabled={
                           createApplication.isPending ||
-                          !form.watch("agreedToTerms")
+                          !form.watch("agreedToTerms") ||
+                          loanAmountExceedsMax
                         }
                         isLoading={createApplication.isPending}
-                        className="w-full sm:w-auto min-w-[180px]"
+                        className="w-full sm:w-auto min-w-[180px] flex items-center"
                       >
                         {createApplication.isPending ? (
                           <>
@@ -2521,3 +2778,6 @@ function HelpModal({
     </Modal>
   );
 }
+
+
+

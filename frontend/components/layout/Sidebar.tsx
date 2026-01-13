@@ -140,10 +140,11 @@ export function Sidebar() {
   const router = useRouter();
   const { logout, user } = useAuth();
   const { data: loans = [] } = useLoans();
-  const { data: applications = [] } = useLoanApplications();
+  const { data: applicationsResponse } = useLoanApplications();
   const { data: delinquentLoans = [] } = useDelinquentLoans();
   const { data: pendingVerifications = [] } = usePendingVerifications();
-
+  const applications = applicationsResponse?.data || []
+  // console.log("application "+ applica)
   // Calculate badges
   const pendingApplications = applications.filter(
     (app) => ['Submitted', 'Under Review', 'Pending'].includes(app.status || '')
