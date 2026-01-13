@@ -7,10 +7,12 @@ import { AuthController } from './auth.controller';
 import { User } from './entities/user.entity';
 import { UserSeedService } from './user-seed.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { Company } from '../company/entities/company.entity';
+
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Company]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {

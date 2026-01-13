@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
+import { Company } from '../company/entities/company.entity';
+
 
 @Injectable()
 export class UserSeedService {
@@ -11,7 +13,29 @@ export class UserSeedService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
   ) {}
+
+  /**
+   * Get or create a default company for seeding
+   */
+  private async getOrCreateDefaultCompany(): Promise<Company> {
+    let company = await this.companyRepository.findOne({ where: { code: 'DEFAULT' } });
+    
+    if (!company) {
+      this.logger.log('Creating default seed company...');
+      company = this.companyRepository.create({
+        name: 'Uruti Lending Default',
+        code: 'DEFAULT',
+        isActive: true,
+      });
+      company = await this.companyRepository.save(company);
+    }
+    
+    return company;
+  }
+
 
   /**
    * Seed default users for the system
@@ -67,6 +91,8 @@ export class UserSeedService {
         },
       ];
 
+      const defaultCompany = await this.getOrCreateDefaultCompany();
+
       for (const userData of users) {
         const hashedPassword = await bcrypt.hash(userData.password, 10);
         
@@ -76,7 +102,9 @@ export class UserSeedService {
           name: userData.name,
           roles: userData.roles,
           isActive: userData.isActive,
+          companyId: defaultCompany.id,
         });
+
 
         await this.userRepository.save(user);
         this.logger.log(`Created user: ${userData.email}`);
@@ -96,6 +124,7 @@ export class UserSeedService {
     this.logger.log('Starting forced user seed...');
 
     try {
+      const defaultCompany = await this.getOrCreateDefaultCompany();
       const users = [
         {
           email: 'admin@urutilending.com',
@@ -141,7 +170,13 @@ export class UserSeedService {
         });
 
         if (existingUser) {
-          this.logger.log(`User ${userData.email} already exists. Skipping.`);
+          if (!existingUser.companyId) {
+            this.logger.log(`Updating companyId for existing user ${userData.email}`);
+            existingUser.companyId = defaultCompany.id;
+            await this.userRepository.save(existingUser);
+          } else {
+            this.logger.log(`User ${userData.email} already exists with companyId. Skipping.`);
+          }
           continue;
         }
 
@@ -153,7 +188,9 @@ export class UserSeedService {
           name: userData.name,
           roles: userData.roles,
           isActive: userData.isActive,
+          companyId: defaultCompany.id,
         });
+
 
         await this.userRepository.save(user);
         this.logger.log(`Created user: ${userData.email}`);

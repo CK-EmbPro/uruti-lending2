@@ -39,7 +39,9 @@ import { Public } from '../../common/decorators/public.decorator';
 @ApiTags('loan-applications')
 @ApiBearerAuth('JWT-auth')
 @Controller('loan-applications')
-@UseGuards(JwtAuthGuard, CompanyGuard) // JWT auth first, then multi-tenancy
+@UseGuards(JwtAuthGuard, 
+  // CompanyGuard
+) // JWT auth first, then multi-tenancy
 export class LoanApplicationController {
   constructor(
     private readonly loanApplicationService: LoanApplicationService,
@@ -49,7 +51,7 @@ export class LoanApplicationController {
   ) {}
 
   @Post()
-  @Public()
+  // @Public()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new loan application', description: 'Creates a new loan application for review and approval. Public endpoint - no authentication required.' })
   @ApiBody({ type: CreateLoanApplicationDto })

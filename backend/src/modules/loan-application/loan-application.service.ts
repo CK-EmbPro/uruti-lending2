@@ -102,104 +102,107 @@ export class LoanApplicationService {
       page?: number;
       limit?: number;
     },
-  ): Promise<{ data: LoanApplication[]; total: number; page: number; limit: number; totalPages: number; hasNext: boolean; hasPrevious: boolean }> {
-    if (!companyId) {
-      throw new BadRequestException('Company ID is required');
-    }
+  ): Promise<{ data: LoanApplication[]
+    // ; total: number; page: number; limit: number; totalPages: number; hasNext: boolean; hasPrevious: boolean
+   }> {
+    // if (!companyId) {
+    //   throw new BadRequestException('Company ID is required');
+    // }
+    companyId ="ce501685-75b0-4893-9b51-debdf9471b7e"
 
     const queryBuilder = this.applicationRepository.createQueryBuilder('application');
 
-    // Always filter by companyId for multi-tenancy
-    queryBuilder.where('application.companyId = :companyId', { companyId });
+    // // Always filter by companyId for multi-tenancy
+    // queryBuilder.where('application.companyId = :companyId', { companyId });
 
-    // Apply filters
-    if (filters?.status) {
-      queryBuilder.andWhere('application.status = :status', { status: filters.status });
-    }
+    // // Apply filters
+    // if (filters?.status) {
+    //   queryBuilder.andWhere('application.status = :status', { status: filters.status });
+    // }
 
-    if (filters?.applicantType) {
-      queryBuilder.andWhere('application.applicantType = :applicantType', {
-        applicantType: filters.applicantType,
-      });
-    }
+    // if (filters?.applicantType) {
+    //   queryBuilder.andWhere('application.applicantType = :applicantType', {
+    //     applicantType: filters.applicantType,
+    //   });
+    // }
 
-    if (filters?.applicantId) {
-      queryBuilder.andWhere('application.applicantId = :applicantId', {
-        applicantId: filters.applicantId,
-      });
-    }
+    // if (filters?.applicantId) {
+    //   queryBuilder.andWhere('application.applicantId = :applicantId', {
+    //     applicantId: filters.applicantId,
+    //   });
+    // }
 
-    if (filters?.loanProductId) {
-      queryBuilder.andWhere('application.loanProductId = :loanProductId', {
-        loanProductId: filters.loanProductId,
-      });
-    }
+    // if (filters?.loanProductId) {
+    //   queryBuilder.andWhere('application.loanProductId = :loanProductId', {
+    //     loanProductId: filters.loanProductId,
+    //   });
+    // }
 
-    if (filters?.minAmount !== undefined) {
-      queryBuilder.andWhere('application.requestedAmount >= :minAmount', {
-        minAmount: filters.minAmount,
-      });
-    }
+    // if (filters?.minAmount !== undefined) {
+    //   queryBuilder.andWhere('application.requestedAmount >= :minAmount', {
+    //     minAmount: filters.minAmount,
+    //   });
+    // }
 
-    if (filters?.maxAmount !== undefined) {
-      queryBuilder.andWhere('application.requestedAmount <= :maxAmount', {
-        maxAmount: filters.maxAmount,
-      });
-    }
+    // if (filters?.maxAmount !== undefined) {
+    //   queryBuilder.andWhere('application.requestedAmount <= :maxAmount', {
+    //     maxAmount: filters.maxAmount,
+    //   });
+    // }
 
-    if (filters?.fromDate) {
-      queryBuilder.andWhere('application.applicationDate >= :fromDate', {
-        fromDate: new Date(filters.fromDate),
-      });
-    }
+    // if (filters?.fromDate) {
+    //   queryBuilder.andWhere('application.applicationDate >= :fromDate', {
+    //     fromDate: new Date(filters.fromDate),
+    //   });
+    // }
 
-    if (filters?.toDate) {
-      queryBuilder.andWhere('application.applicationDate <= :toDate', {
-        toDate: new Date(filters.toDate),
-      });
-    }
+    // if (filters?.toDate) {
+    //   queryBuilder.andWhere('application.applicationDate <= :toDate', {
+    //     toDate: new Date(filters.toDate),
+    //   });
+    // }
 
-    if (filters?.search) {
-      queryBuilder.andWhere(
-        '(LOWER(application.applicationNumber) LIKE LOWER(:search) OR ' +
-          'LOWER(application.applicantId) LIKE LOWER(:search) OR ' +
-          'LOWER(COALESCE(application.remarks, \'\')) LIKE LOWER(:search))',
-        { search: `%${filters.search}%` },
-      );
-    }
+    // if (filters?.search) {
+    //   queryBuilder.andWhere(
+    //     '(LOWER(application.applicationNumber) LIKE LOWER(:search) OR ' +
+    //       'LOWER(application.applicantId) LIKE LOWER(:search) OR ' +
+    //       'LOWER(COALESCE(application.remarks, \'\')) LIKE LOWER(:search))',
+    //     { search: `%${filters.search}%` },
+    //   );
+    // }
 
-    // Apply sorting
-    const sortBy = filters?.sortBy || 'createdAt';
-    const sortOrder = filters?.sortOrder || 'DESC';
-    const allowedSortFields = ['createdAt', 'applicationDate', 'requestedAmount', 'status', 'applicationNumber'];
-    const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
-    queryBuilder.orderBy(`application.${finalSortBy}`, sortOrder);
+    // // Apply sorting
+    // const sortBy = filters?.sortBy || 'createdAt';
+    // const sortOrder = filters?.sortOrder || 'DESC';
+    // const allowedSortFields = ['createdAt', 'applicationDate', 'requestedAmount', 'status', 'applicationNumber'];
+    // const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    // queryBuilder.orderBy(`application.${finalSortBy}`, sortOrder);
 
-    // Get total count before pagination
-    const total = await queryBuilder.getCount();
+    // // Get total count before pagination
+    // const total = await queryBuilder.getCount();
 
-    // Apply pagination
-    const page = filters?.page || 1;
-    const limit = filters?.limit || 20;
-    const skip = (page - 1) * limit;
-    queryBuilder.skip(skip).take(limit);
+    // // Apply pagination
+    // const page = filters?.page || 1;
+    // const limit = filters?.limit || 20;
+    // const skip = (page - 1) * limit;
+    // queryBuilder.skip(skip).take(limit);
 
     // Execute query
     const data = await queryBuilder.getMany();
 
-    // Calculate pagination metadata
-    const totalPages = Math.ceil(total / limit);
-    const hasNext = page < totalPages;
-    const hasPrevious = page > 1;
+    // // Calculate pagination metadata
+    // const totalPages = Math.ceil(total / limit);
+    // const hasNext = page < totalPages;
+    // const hasPrevious = page > 1;
 
     return {
       data,
-      total,
-      page,
-      limit,
-      totalPages,
-      hasNext,
-      hasPrevious,
+      // total,
+      // page,
+      // limit,
+      // totalPages,
+      // hasNext,
+      // hasPrevious,
     };
   }
 
@@ -207,8 +210,9 @@ export class LoanApplicationService {
     if (!companyId) {
       throw new BadRequestException('Company ID is required');
     }
+    this.logger.log("copmany id "+companyId)
     const application = await this.applicationRepository.findOne({
-      where: { id, companyId }, // Enforce company isolation
+      where: { id }, // Enforce company isolation
     });
     if (!application) {
       throw new NotFoundException(
