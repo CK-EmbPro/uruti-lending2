@@ -21,7 +21,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     verifySession();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     if (isLoggingInRef.current) {
       throw new Error("Login already in progress");
     }
@@ -121,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       console.log("[AuthContext] Login complete and verified");
+      return response.user;
     } catch (error: any) {
       console.error("[AuthContext] Login error:", error.message);
       setUser(null);

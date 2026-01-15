@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, isAuthenticated, loading } = useAuth();
+  const { login, isAuthenticated, loading, user } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,16 +23,27 @@ export default function LoginPage() {
     console.log("[LoginPage] Submitting login...");
 
     try {
-      await login(email, password);
-      console.log("[LoginPage] Login successful");
+      const user = await login(email, password);
+      console.log("[LoginPage] Login successful", user.roles);
 
       toast.success("Login successful!");
 
       // Wait for state to fully propagate
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      console.log("[LoginPage] Redirecting to dashboard");
-      router.replace("/dashboard");
+      // Role-based redirection
+      const userRoles = user.roles || [];
+      const isStaff = userRoles.some((role: string) => 
+        ['admin', 'loan_officer', 'manager', 'approver'].includes(role)
+      );
+
+      if (isStaff) {
+        console.log("[LoginPage] Staff user detected, redirecting to dashboard");
+        router.replace("/dashboard");
+      } else {
+        console.log("[LoginPage] Regular user detected, redirecting to portal");
+        router.replace("/portal/dashboard");
+      }
     } catch (error: any) {
       console.error("[LoginPage] Login failed:", error);
       setIsSubmitting(false);
@@ -67,8 +78,11 @@ export default function LoginPage() {
   }
 
   // Redirect if already authenticated
-  if (isAuthenticated) {
-    router.replace("/dashboard");
+  if (isAuthenticated && user) {
+    const isStaff = user.roles?.some(role => 
+      ['admin', 'loan_officer', 'manager', 'approver'].includes(role)
+    );
+    router.replace(isStaff ? "/dashboard" : "/portal/dashboard");
     return null;
   }
 

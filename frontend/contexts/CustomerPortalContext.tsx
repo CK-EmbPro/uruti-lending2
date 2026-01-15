@@ -21,29 +21,21 @@ export function CustomerPortalProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check for stored token on mount
-    if (typeof window !== 'undefined') {
-      const storedToken = localStorage.getItem('customer_portal_token');
-      if (storedToken) {
-        setToken(storedToken);
-        // Try to get current user
-        customerPortalApi.getCurrentUser()
-          .then((userData) => {
-            setUser(userData);
-          })
-          .catch(() => {
-            // Token invalid, clear it
-            localStorage.removeItem('customer_portal_token');
-            setToken(null);
-          })
-          .finally(() => {
-            setLoading(false);
-          });
-      } else {
-        setLoading(false);
-      }
+  const verifySession = async () => {
+    try {
+      const userData = await customerPortalApi.getCurrentUser();
+      setUser(userData);
+      setToken('cookie-set');
+    } catch (error) {
+      setUser(null);
+      setToken(null);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    verifySession();
   }, []);
 
   const login = async (email: string, password: string, loanNumber?: string) => {
@@ -51,15 +43,19 @@ export function CustomerPortalProvider({ children }: { children: ReactNode }) {
     const response = await customerPortalApi.login(loginData);
     
     if (response.requiresMfa && response.tempToken) {
-      // MFA required, return temp token for verification
       return { requiresMfa: true, tempToken: response.tempToken };
     }
     
-    // Normal login successful
-    if (response.access_token) {
-      localStorage.setItem('customer_portal_token', response.access_token);
-      setToken(response.access_token);
+    if (response.user) {
       setUser(response.user);
+      setToken('cookie-set');
+      
+      // Verify cookie
+      try {
+        await customerPortalApi.getCurrentUser();
+      } catch (error) {
+        console.error('Cookie verification failed');
+      }
     }
     
     return { requiresMfa: false };
@@ -67,25 +63,37 @@ export function CustomerPortalProvider({ children }: { children: ReactNode }) {
 
   const verifyMfaLogin = async (tempToken: string, mfaToken: string) => {
     const response = await customerPortalApi.verifyMfaLogin(tempToken, mfaToken);
-    if (response.access_token) {
-      localStorage.setItem('customer_portal_token', response.access_token);
-      setToken(response.access_token);
+    if (response.user) {
       setUser(response.user);
+      setToken('cookie-set');
+      
+      // Verify cookie
+      try {
+        await customerPortalApi.getCurrentUser();
+      } catch (error) {
+        console.error('Cookie verification failed');
+      }
     }
   };
 
   const register = async (email: string, password: string, name: string, phoneNumber?: string, loanNumber?: string) => {
     const registerData: CustomerRegisterDto = { email, password, name, phoneNumber, loanNumber };
     const response = await customerPortalApi.register(registerData);
-    localStorage.setItem('customer_portal_token', response.access_token);
-    setToken(response.access_token);
-    setUser(response.user);
+    if (response.user) {
+      setUser(response.user);
+      setToken('cookie-set');
+    }
   };
 
-  const logout = () => {
-    localStorage.removeItem('customer_portal_token');
-    setToken(null);
-    setUser(null);
+  const logout = async () => {
+    try {
+      await customerPortalApi.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setToken(null);
+      setUser(null);
+    }
   };
 
   return (

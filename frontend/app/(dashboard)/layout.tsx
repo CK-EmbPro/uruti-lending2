@@ -11,7 +11,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const hasRedirectedRef = useRef(false);
@@ -22,6 +22,7 @@ export default function DashboardLayout({
       loading,
       isAuthenticated,
       hasRedirected: hasRedirectedRef.current,
+      userRoles: user?.roles,
     });
 
     // Prevent redirect loops
@@ -30,20 +31,33 @@ export default function DashboardLayout({
       return;
     }
 
-    // Only redirect if loading complete AND not authenticated
-    if (!loading && !isAuthenticated) {
-      console.log("[DashboardLayout] Not authenticated - redirecting to login");
-      hasRedirectedRef.current = true;
-      router.replace("/login");
-    }
-  }, [isAuthenticated, loading, router, pathname]);
+    // Only redirect if loading complete
+    if (!loading) {
+      if (!isAuthenticated) {
+        console.log("[DashboardLayout] Not authenticated - redirecting to login");
+        hasRedirectedRef.current = true;
+        router.replace("/login");
+      } else if (user) {
+        // Enforce staff-only access for dashboard
+        const isStaff = user.roles?.some((role: string) => 
+          ['admin', 'loan_officer', 'manager', 'approver'].includes(role)
+        );
 
-  // Reset redirect flag when auth state changes
+        if (!isStaff) {
+          console.log("[DashboardLayout] Non-staff user attempted access - redirecting to portal");
+          hasRedirectedRef.current = true;
+          router.replace("/portal/dashboard");
+        }
+      }
+    }
+  }, [isAuthenticated, loading, router, pathname, user]);
+
+  // Reset redirect flag when auth state changes or user changes
   useEffect(() => {
     if (isAuthenticated) {
       hasRedirectedRef.current = false;
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   // Show loading while verifying auth
   if (loading) {
