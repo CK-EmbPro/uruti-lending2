@@ -13,6 +13,7 @@ import {
   Headers,
   UnauthorizedException,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -85,8 +86,37 @@ export class CustomerPortalController {
     } 
   })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() loginDto: CustomerLoginDto) {
-    return this.customerPortalService.login(loginDto);
+  async login(@Body() loginDto: CustomerLoginDto, @Res() res: any) {
+    const result = await this.customerPortalService.login(loginDto);
+    
+    if (result.access_token) {
+      res.cookie('customer_access_token', result.access_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000,
+        path: '/',
+      });
+    }
+    
+    return res.json(result);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Customer portal logout',
+    description: 'Clears the customer authentication cookie',
+  })
+  @ApiResponse({ status: 200, description: 'Logout successful' })
+  async logout(@Res() res: any) {
+    res.clearCookie('customer_access_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+    return res.json({ message: 'Logged out successfully' });
   }
 
   @Post('login/verify-mfa')
@@ -108,8 +138,20 @@ export class CustomerPortalController {
     },
   })
   @ApiResponse({ status: 401, description: 'Invalid token or MFA code' })
-  async verifyMfaLogin(@Body() verifyDto: VerifyMfaLoginDto) {
-    return this.customerPortalService.verifyMfaLogin(verifyDto.tempToken, verifyDto.token);
+  async verifyMfaLogin(@Body() verifyDto: VerifyMfaLoginDto, @Res() res: any) {
+    const result = await this.customerPortalService.verifyMfaLogin(verifyDto.tempToken, verifyDto.token);
+    
+    if (result.access_token) {
+      res.cookie('customer_access_token', result.access_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000,
+        path: '/',
+      });
+    }
+    
+    return res.json(result);
   }
 
   @Get('me')
@@ -120,13 +162,23 @@ export class CustomerPortalController {
   })
   @ApiResponse({ status: 200, description: 'Customer found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getCurrentUser(@Headers('authorization') authHeader?: string) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  async getCurrentUser(
+    @Headers('authorization') authHeader?: string,
+    @Request() req?: any,
+  ) {
+    let token: string | null = null;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (req?.cookies?.customer_access_token) {
+      token = req.cookies.customer_access_token;
+    }
+
+    if (!token) {
       throw new UnauthorizedException('No token provided');
     }
 
     try {
-      const token = authHeader.substring(7);
       const payload = this.jwtService.verify(token);
       
       // Verify it's a customer token

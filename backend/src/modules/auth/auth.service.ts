@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, Logger, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, Logger, InternalServerErrorException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -24,13 +24,13 @@ export class AuthService {
       
       if (!user) {
         this.logger.debug(`User not found for email: ${email}`);
-        return null;
+        throw new NotFoundException(`User not found`);
       }
 
       // Check if user has a password
       if (!user.password) {
         this.logger.warn(`User ${email} has no password set`);
-        return null;
+        throw new BadRequestException('User account is missing password credentials');
       }
 
       // Compare password
@@ -38,7 +38,7 @@ export class AuthService {
       
       if (!isPasswordValid) {
         this.logger.debug(`Invalid password for user: ${email}`);
-        return null;
+        throw new BadRequestException('Invalid password provided');
       }
 
       const { password: _, ...result } = user;
@@ -113,11 +113,11 @@ export class AuthService {
     try {
       this.logger.debug(`Login attempt for email: ${loginDto.email}`);
       
-      // Validate user credentials
+      // Validate user credentials (throws specific exceptions if invalid)
       const user = await this.validateUser(loginDto.email, loginDto.password);
       
       if (!user) {
-        this.logger.warn(`Login failed: Invalid credentials for ${loginDto.email}`);
+        // This should not happen now that validateUser throws
         throw new UnauthorizedException('Invalid credentials');
       }
 
@@ -173,7 +173,12 @@ export class AuthService {
       };
     } catch (error) {
       // Re-throw known exceptions (don't wrap them)
-      if (error instanceof UnauthorizedException || error instanceof InternalServerErrorException) {
+      if (
+        error instanceof UnauthorizedException || 
+        error instanceof InternalServerErrorException ||
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
       
