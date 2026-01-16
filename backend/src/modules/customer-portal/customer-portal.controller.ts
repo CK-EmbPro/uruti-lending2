@@ -162,16 +162,13 @@ export class CustomerPortalController {
   })
   @ApiResponse({ status: 200, description: 'Customer found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getCurrentUser(
-    @Headers('authorization') authHeader?: string,
-    @Request() req?: any,
-  ) {
+  private validateToken(req: any, authHeader?: string): { sub: string; email: string; type: string } {
     let token: string | null = null;
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    } else if (req?.cookies?.customer_access_token) {
+    if (req?.cookies?.customer_access_token) {
       token = req.cookies.customer_access_token;
+    } else if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
     }
 
     if (!token) {
@@ -181,16 +178,31 @@ export class CustomerPortalController {
     try {
       const payload = this.jwtService.verify(token);
       
-      // Verify it's a customer token
       if (payload.type !== 'customer') {
         throw new UnauthorizedException('Invalid token type');
       }
 
-      const userId = payload.sub;
-      return this.customerPortalService.getCurrentUser(userId);
+      return payload;
     } catch (error) {
-      throw new UnauthorizedException('Invalid token');
+      throw new UnauthorizedException('Invalid or expired token');
     }
+  }
+
+  @Get('me')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get current customer',
+    description: 'Retrieves the currently authenticated customer from JWT token',
+  })
+  @ApiResponse({ status: 200, description: 'Customer found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getCurrentUser(
+    @Headers('authorization') authHeader?: string,
+    @Request() req?: any,
+  ) {
+    // Extensive logging was here for debugging, now simplified to use unified validation
+    const payload = this.validateToken(req, authHeader);
+    return this.customerPortalService.getCurrentUser(payload.sub);
   }
 
   @Patch('profile')
@@ -204,19 +216,10 @@ export class CustomerPortalController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateProfile(
     @Body() updateDto: UpdateProfileDto,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+    const payload = this.validateToken(req, authHeader);
     return this.customerPortalService.updateProfile(payload.sub, updateDto);
   }
 
@@ -232,18 +235,10 @@ export class CustomerPortalController {
   @ApiResponse({ status: 409, description: 'Email already in use' })
   async updateEmail(
     @Body() updateDto: UpdateEmailDto,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
+    const payload = this.validateToken(req, authHeader);
 
     if (!updateDto.email) {
       throw new BadRequestException('Email is required');
@@ -263,18 +258,10 @@ export class CustomerPortalController {
   @ApiResponse({ status: 401, description: 'Unauthorized or incorrect current password' })
   async changePassword(
     @Body() changePasswordDto: ChangePasswordDto,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
+    const payload = this.validateToken(req, authHeader);
 
     if (changePasswordDto.newPassword !== changePasswordDto.confirmPassword) {
       throw new BadRequestException('New password and confirmation do not match');
@@ -297,23 +284,12 @@ export class CustomerPortalController {
   })
   @ApiResponse({ status: 200, description: 'Loans retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getMyLoans(@Headers('authorization') authHeader?: string) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    try {
-      const token = authHeader.substring(7);
-      const payload = this.jwtService.verify(token);
-      
-      if (payload.type !== 'customer') {
-        throw new UnauthorizedException('Invalid token type');
-      }
-
-      return this.customerPortalService.getMyLoans(payload.email, payload.sub);
-    } catch (error) {
-      throw new UnauthorizedException('Invalid token');
-    }
+  async getMyLoans(
+    @Request() req: any,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const payload = this.validateToken(req, authHeader);
+    return this.customerPortalService.getMyLoans(payload.email, payload.sub);
   }
 
   @Get('loans/:id')
@@ -328,24 +304,11 @@ export class CustomerPortalController {
   @ApiResponse({ status: 404, description: 'Loan not found' })
   async getMyLoan(
     @Param('id') loanId: string,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    try {
-      const token = authHeader.substring(7);
-      const payload = this.jwtService.verify(token);
-      
-      if (payload.type !== 'customer') {
-        throw new UnauthorizedException('Invalid token type');
-      }
-
-      return this.customerPortalService.getMyLoan(loanId, payload.email, payload.sub);
-    } catch (error) {
-      throw new UnauthorizedException('Invalid token');
-    }
+    const payload = this.validateToken(req, authHeader);
+    return this.customerPortalService.getMyLoan(loanId, payload.email, payload.sub);
   }
 
   @Get('loans/:id/summary')
@@ -358,20 +321,11 @@ export class CustomerPortalController {
   @ApiResponse({ status: 200, description: 'Summary retrieved successfully' })
   async getLoanSummary(
     @Param('id') loanId: string,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
-      return this.customerPortalService.getLoanSummary(loanId, payload.email, payload.sub);
+    const payload = this.validateToken(req, authHeader);
+    return this.customerPortalService.getLoanSummary(loanId, payload.email, payload.sub);
   }
 
   @Get('loans/:id/payment-history')
@@ -385,21 +339,12 @@ export class CustomerPortalController {
   @ApiResponse({ status: 200, description: 'Payment history retrieved successfully' })
   async getPaymentHistory(
     @Param('id') loanId: string,
+    @Request() req: any,
     @Query('limit') limit?: number,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
-      return this.customerPortalService.getPaymentHistory(loanId, payload.email, payload.sub, limit);
+    const payload = this.validateToken(req, authHeader);
+    return this.customerPortalService.getPaymentHistory(loanId, payload.email, payload.sub, limit);
   }
 
   @Get('loans/:id/upcoming-payments')
@@ -413,21 +358,12 @@ export class CustomerPortalController {
   @ApiResponse({ status: 200, description: 'Upcoming payments retrieved successfully' })
   async getUpcomingPayments(
     @Param('id') loanId: string,
+    @Request() req: any,
     @Query('limit') limit?: number,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
-      return this.customerPortalService.getUpcomingPayments(loanId, payload.email, payload.sub, limit);
+    const payload = this.validateToken(req, authHeader);
+    return this.customerPortalService.getUpcomingPayments(loanId, payload.email, payload.sub, limit);
   }
 
   @Get('loans/:id/statements')
@@ -440,19 +376,10 @@ export class CustomerPortalController {
   @ApiResponse({ status: 200, description: 'Statements retrieved successfully' })
   async getStatements(
     @Param('id') loanId: string,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+    const payload = this.validateToken(req, authHeader);
     return this.customerPortalService.getStatements(loanId, payload.email, payload.sub);
   }
 
@@ -469,19 +396,10 @@ export class CustomerPortalController {
   @ApiResponse({ status: 409, description: 'Loan already linked' })
   async linkLoan(
     @Body() linkDto: LinkLoanDto,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+    const payload = this.validateToken(req, authHeader);
     return this.customerPortalService.linkLoan(payload.sub, payload.email, linkDto);
   }
 
@@ -497,19 +415,10 @@ export class CustomerPortalController {
   @ApiResponse({ status: 404, description: 'Loan link not found' })
   async unlinkLoan(
     @Param('id') loanId: string,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+    const payload = this.validateToken(req, authHeader);
     await this.customerPortalService.unlinkLoan(payload.sub, loanId);
     return { message: 'Loan unlinked successfully' };
   }
@@ -522,23 +431,12 @@ export class CustomerPortalController {
   })
   @ApiResponse({ status: 200, description: 'Documents retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getAllDocuments(@Headers('authorization') authHeader?: string) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    try {
-      const token = authHeader.substring(7);
-      const payload = this.jwtService.verify(token);
-      
-      if (payload.type !== 'customer') {
-        throw new UnauthorizedException('Invalid token type');
-      }
-
-      return this.customerPortalService.getAllDocuments(payload.email, payload.sub);
-    } catch (error) {
-      throw new UnauthorizedException('Invalid token');
-    }
+  async getAllDocuments(
+    @Request() req: any,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const payload = this.validateToken(req, authHeader);
+    return this.customerPortalService.getAllDocuments(payload.email, payload.sub);
   }
 
   @Get('notifications')
@@ -552,21 +450,12 @@ export class CustomerPortalController {
   @ApiResponse({ status: 200, description: 'Notifications retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getNotifications(
+    @Request() req: any,
     @Query('limit') limit?: number,
     @Query('unreadOnly') unreadOnly?: string | boolean,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+    const payload = this.validateToken(req, authHeader);
     return this.customerPortalService.getNotifications(
       payload.sub,
       limit ? parseInt(limit.toString()) : 50,
@@ -582,18 +471,11 @@ export class CustomerPortalController {
   })
   @ApiResponse({ status: 200, description: 'Unread count retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getUnreadCount(@Headers('authorization') authHeader?: string) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+  async getUnreadCount(
+    @Request() req: any,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const payload = this.validateToken(req, authHeader);
     const count = await this.customerPortalService.getUnreadNotificationCount(payload.sub);
     return { count };
   }
@@ -610,19 +492,10 @@ export class CustomerPortalController {
   @ApiResponse({ status: 404, description: 'Notification not found' })
   async markNotificationAsRead(
     @Param('id') notificationId: string,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+    const payload = this.validateToken(req, authHeader);
     await this.customerPortalService.markNotificationAsRead(payload.sub, notificationId);
     return { message: 'Notification marked as read' };
   }
@@ -635,18 +508,11 @@ export class CustomerPortalController {
   })
   @ApiResponse({ status: 200, description: 'All notifications marked as read' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async markAllNotificationsAsRead(@Headers('authorization') authHeader?: string) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+  async markAllNotificationsAsRead(
+    @Request() req: any,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const payload = this.validateToken(req, authHeader);
     await this.customerPortalService.markAllNotificationsAsRead(payload.sub);
     return { message: 'All notifications marked as read' };
   }
@@ -660,18 +526,11 @@ export class CustomerPortalController {
   @ApiResponse({ status: 200, description: 'MFA setup initiated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 409, description: 'MFA already enabled' })
-  async setupMfa(@Headers('authorization') authHeader?: string) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+  async setupMfa(
+    @Request() req: any,
+    @Headers('authorization') authHeader?: string,
+  ) {
+    const payload = this.validateToken(req, authHeader);
     return this.customerPortalService.setupMfa(payload.sub);
   }
 
@@ -686,19 +545,10 @@ export class CustomerPortalController {
   @ApiResponse({ status: 401, description: 'Unauthorized or invalid token' })
   async verifyMfaSetup(
     @Body() verifyDto: VerifyMfaDto,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+    const payload = this.validateToken(req, authHeader);
     await this.customerPortalService.verifyMfaSetup(payload.sub, verifyDto.token);
     return { message: 'MFA enabled successfully' };
   }
@@ -714,19 +564,10 @@ export class CustomerPortalController {
   @ApiResponse({ status: 401, description: 'Unauthorized or invalid token' })
   async disableMfa(
     @Body() disableDto: DisableMfaDto,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+    const payload = this.validateToken(req, authHeader);
     await this.customerPortalService.disableMfa(payload.sub, disableDto.token);
     return { message: 'MFA disabled successfully' };
   }
@@ -743,22 +584,12 @@ export class CustomerPortalController {
   async schedulePayment(
     @Param('id') loanId: string,
     @Body() dto: SchedulePaymentDto,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+    const payload = this.validateToken(req, authHeader);
     // Set loanId from param
     dto.loanId = loanId;
-
     return this.customerPortalService.schedulePayment(dto, payload.email, payload.sub);
   }
 
@@ -772,19 +603,10 @@ export class CustomerPortalController {
   @ApiResponse({ status: 200, description: 'Scheduled payments retrieved successfully' })
   async getScheduledPayments(
     @Param('id') loanId: string,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+    const payload = this.validateToken(req, authHeader);
     return this.customerPortalService.getScheduledPayments(loanId, payload.email, payload.sub);
   }
 
@@ -800,19 +622,10 @@ export class CustomerPortalController {
   async cancelScheduledPayment(
     @Param('id') scheduledPaymentId: string,
     @Body() dto: CancelScheduledPaymentDto,
+    @Request() req: any,
     @Headers('authorization') authHeader?: string,
   ) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    const payload = this.jwtService.verify(token);
-    
-    if (payload.type !== 'customer') {
-      throw new UnauthorizedException('Invalid token type');
-    }
-
+    const payload = this.validateToken(req, authHeader);
     return this.customerPortalService.cancelScheduledPayment(
       scheduledPaymentId,
       dto,

@@ -37,6 +37,8 @@ import { LoanRepaymentModule } from '../loan-repayment/loan-repayment.module';
         const secret = configService.get<string>('jwt.secret') || configService.get<string>('JWT_SECRET') || 'your-secret-key';
         const expiresIn = configService.get<string>('jwt.expiresIn') || configService.get<string>('JWT_EXPIRES_IN') || '24h';
         
+        console.log('[CustomerPortalModule] JWT secret loaded:', secret ? (secret.substring(0, 5) + '...') : 'MISSING');
+        
         return {
           secret,
           signOptions: {
