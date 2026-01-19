@@ -13,6 +13,7 @@ import {
   Headers,
   UnauthorizedException,
   BadRequestException,
+  NotFoundException,
   Res,
 } from '@nestjs/common';
 import {
@@ -32,7 +33,9 @@ import { UpdateProfileDto, UpdateEmailDto, ChangePasswordDto } from './dto/updat
 import { SetupMfaDto, VerifyMfaDto, DisableMfaDto } from './dto/mfa.dto';
 import { VerifyMfaLoginDto } from './dto/verify-mfa-login.dto';
 import { SchedulePaymentDto, CancelScheduledPaymentDto } from './dto/schedule-payment.dto';
+import { CreateLoanApplicationDto } from '../loan-application/dto/create-loan-application.dto';
 import { JwtService } from '@nestjs/jwt';
+
 
 @ApiTags('customer-portal')
 @Controller('customer-portal')
@@ -86,20 +89,8 @@ export class CustomerPortalController {
     } 
   })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() loginDto: CustomerLoginDto, @Res() res: any) {
-    const result = await this.customerPortalService.login(loginDto);
-    
-    if (result.access_token) {
-      res.cookie('customer_access_token', result.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000,
-        path: '/',
-      });
-    }
-    
-    return res.json(result);
+  async login(@Body() loginDto: CustomerLoginDto) {
+    return this.customerPortalService.login(loginDto);
   }
 
   @Post('logout')
@@ -109,14 +100,8 @@ export class CustomerPortalController {
     description: 'Clears the customer authentication cookie',
   })
   @ApiResponse({ status: 200, description: 'Logout successful' })
-  async logout(@Res() res: any) {
-    res.clearCookie('customer_access_token', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-    });
-    return res.json({ message: 'Logged out successfully' });
+  async logout() {
+    return { message: 'Logged out successfully' };
   }
 
   @Post('login/verify-mfa')
@@ -138,42 +123,18 @@ export class CustomerPortalController {
     },
   })
   @ApiResponse({ status: 401, description: 'Invalid token or MFA code' })
-  async verifyMfaLogin(@Body() verifyDto: VerifyMfaLoginDto, @Res() res: any) {
-    const result = await this.customerPortalService.verifyMfaLogin(verifyDto.tempToken, verifyDto.token);
-    
-    if (result.access_token) {
-      res.cookie('customer_access_token', result.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000,
-        path: '/',
-      });
-    }
-    
-    return res.json(result);
+  async verifyMfaLogin(@Body() verifyDto: VerifyMfaLoginDto) {
+    return this.customerPortalService.verifyMfaLogin(verifyDto.tempToken, verifyDto.token);
   }
 
-  @Get('me')
-  @ApiBearerAuth('JWT-auth')
-  @ApiOperation({
-    summary: 'Get current customer',
-    description: 'Retrieves the currently authenticated customer from JWT token',
-  })
   @ApiResponse({ status: 200, description: 'Customer found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   private validateToken(req: any, authHeader?: string): { sub: string; email: string; type: string } {
-    let token: string | null = null;
-
-    if (req?.cookies?.customer_access_token) {
-      token = req.cookies.customer_access_token;
-    } else if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
-
-    if (!token) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new UnauthorizedException('No token provided');
     }
+
+    const token = authHeader.substring(7);
 
     try {
       const payload = this.jwtService.verify(token);
@@ -633,5 +594,79 @@ export class CustomerPortalController {
       payload.sub,
     );
   }
-}
 
+  @Get('risk-tier')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get customer risk tier', description: 'Retrieves the risk tier for the authenticated customer' })
+  @ApiResponse({ status: 200, description: 'Risk tier retrieved successfuly' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getRiskTier(@Headers('authorization') authHeader: string) {
+    const token = authHeader?.split(' ')[1];
+    if (!token) {
+      throw new UnauthorizedException('No token provided');
+    }
+
+    try {
+      const payload = this.jwtService.verify(token);
+      return this.customerPortalService.getRiskTier(payload.sub);
+    } catch (e) {
+      throw new UnauthorizedException('Invalid token');
+    }
+  }
+
+  @Get('companies')
+  @ApiOperation({ summary: 'Get available lending companies', description: 'Returns a list of active lending companies' })
+  @ApiResponse({ status: 200, description: 'Companies retrieved successfully' })
+  async getCompanies() {
+    return this.customerPortalService.getAvailableCompanies();
+  }
+
+  @Get('loan-products')
+  @ApiOperation({ summary: 'Get loan products by company', description: 'Returns active loan products for a specific company' })
+  @ApiQuery({ name: 'companyId', required: true })
+  @ApiResponse({ status: 200, description: 'Loan products retrieved successfully' })
+  async getLoanProducts(@Query('companyId') companyId: string) {
+    if (!companyId) {
+      throw new BadRequestException('Company ID is required');
+    }
+    return this.customerPortalService.getLoanProductsByCompany(companyId);
+  }
+
+  @Post('applications')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Submit a loan application', description: 'Submits a new loan application for the authenticated customer' })
+  @ApiBody({ type: CreateLoanApplicationDto })
+  @ApiResponse({ status: 201, description: 'Application submitted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async submitApplication(@Headers('authorization') authHeader: string, @Body() dto: CreateLoanApplicationDto) {
+    const token = authHeader?.split(' ')[1];
+    if (!token) {
+      throw new UnauthorizedException('No token provided');
+    }
+
+    try {
+      const payload = this.jwtService.verify(token);
+      return this.customerPortalService.submitApplication(payload.sub, dto);
+    } catch (e) {
+      throw new UnauthorizedException('Invalid token');
+    }
+  }
+
+  @Get('my-applications')
+  @ApiOperation({ summary: 'Get my loan applications', description: 'Retrieves all loan applications submitted by the authenticated customer' })
+  @ApiResponse({ status: 200, description: 'Applications retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getMyApplications(@Headers('authorization') authHeader: string) {
+    const token = authHeader?.split(' ')[1];
+    if (!token) {
+      throw new UnauthorizedException('No token provided');
+    }
+
+    try {
+      const payload = this.jwtService.verify(token);
+      return this.customerPortalService.getMyApplications(payload.sub);
+    } catch (e) {
+      throw new UnauthorizedException('Invalid token');
+    }
+  }
+}

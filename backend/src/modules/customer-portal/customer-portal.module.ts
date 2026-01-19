@@ -17,6 +17,16 @@ import { LoanApplication } from '../loan-application/entities/loan-application.e
 import { NotificationLog } from '../notification/entities/notification-log.entity';
 import { ScheduledPayment } from './entities/scheduled-payment.entity';
 import { LoanRepaymentModule } from '../loan-repayment/loan-repayment.module';
+import { CreditScoringEngineModule } from '../credit-scoring-engine/credit-scoring-engine.module';
+import { forwardRef } from '@nestjs/common';
+import { Company } from '../company/entities/company.entity';
+import { LoanProduct } from '../loan-product/entities/loan-product.entity';
+import { LoanApplicationModule } from '../loan-application/loan-application.module';
+import { CompanyModule } from '../company/company.module';
+import { LoanProductModule } from '../loan-product/loan-product.module';
+
+
+
 
 @Module({
   imports: [
@@ -30,6 +40,8 @@ import { LoanRepaymentModule } from '../loan-repayment/loan-repayment.module';
       LoanApplication,
       NotificationLog,
       ScheduledPayment,
+      Company,
+      LoanProduct,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -51,6 +63,12 @@ import { LoanRepaymentModule } from '../loan-repayment/loan-repayment.module';
     AccountManagementModule,
     NotificationModule,
     LoanRepaymentModule,
+    LoanApplicationModule,
+    CompanyModule,
+    LoanProductModule,
+    forwardRef(() => CreditScoringEngineModule),
+
+
   ],
   controllers: [CustomerPortalController, CustomerPortalAdminController],
   providers: [CustomerPortalService],

@@ -81,42 +81,11 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
   @ApiResponse({ status: 500, description: "Internal server error" })
-  async login(@Body() loginDto: LoginDto, @Response() res: any) {
-    try {
-      console.log("Login attempt for:", loginDto.email);
-      const result = await this.authService.login(loginDto);
-      console.log("Login successful for:", loginDto.email);
-
-      // Set HttpOnly cookie with JWT token
-      res.cookie("access_token", result.access_token, {
-        httpOnly: true, // Prevent XSS attacks
-        secure: process.env.NODE_ENV === "production", // HTTPS only in production
-        sameSite: "lax", // CSRF protection
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        path: "/",
-      });
-
-      // Also return token for backward compatibility (frontend can use cookie instead)
-      return res.json(result);
-    } catch (error) {
-      // Re-throw known exceptions (they already have proper status codes)
-      if (error instanceof UnauthorizedException || error.status === 401) {
-        console.log("Login failed - Invalid credentials for:", loginDto.email);
-        throw error;
-      }
-
-      // Log unexpected errors with full details for debugging
-      console.error("Login error details:", {
-        message: error.message,
-        stack: error.stack,
-        email: loginDto.email,
-        errorName: error.name,
-        errorStatus: error.status,
-      });
-
-      // Re-throw the error (it should already be an InternalServerErrorException from the service)
-      throw error;
-    }
+  async login(@Body() loginDto: LoginDto) {
+    console.log("Login attempt for:", loginDto.email);
+    const result = await this.authService.login(loginDto);
+    console.log("Login successful for:", loginDto.email);
+    return result;
   }
 
   @Post("logout")
@@ -126,16 +95,8 @@ export class AuthController {
     description: "Clears the authentication cookie",
   })
   @ApiResponse({ status: 200, description: "Logout successful" })
-  async logout(@Response() res: any) {
-    // Clear the HttpOnly cookie
-    res.clearCookie("access_token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
-
-    return res.json({ message: "Logged out successfully" });
+  async logout() {
+    return { message: "Logged out successfully" };
   }
 
   @Get("me")
@@ -148,55 +109,19 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "User found" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   async getCurrentUser(
-    @Headers("authorization") authHeader?: string,
-    @Req() req?: any
+    @Headers("authorization") authHeader?: string
   ) {
-    // Log request details for debugging
-    console.log("[Auth/Me] Request received:", {
-      hasAuthHeader: !!authHeader,
-      hasCookies: !!req?.cookies,
-      cookieKeys: req?.cookies ? Object.keys(req.cookies) : [],
-      hasAccessToken: !!req?.cookies?.access_token,
-      timestamp: new Date().toISOString(),
-    });
-
-    let token: string | null = null;
-
-    // Try to get token from Authorization header first
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      token = authHeader.substring(7);
-      console.log("[Auth/Me] Token found in Authorization header");
-    }
-
-    // Fall back to cookie if no Bearer token
-    if (!token && req?.cookies?.access_token) {
-      token = req.cookies.access_token;
-      console.log("[Auth/Me] Token found in cookie:", {
-        tokenPrefix: token?.substring(0, 20),
-      });
-    }
-
-    if (!token) {
-      console.log(
-        "[Auth/Me] No token found in headers or cookies - returning 401"
-      );
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       throw new UnauthorizedException("No token provided");
     }
+
+    const token = authHeader.substring(7);
 
     try {
       const payload = this.jwtService.verify(token);
       const userId = payload.sub;
-      console.log(
-        "[Auth/Me] Token verified successfully, retrieving user:",
-        userId
-      );
       return this.authService.getCurrentUser(userId);
     } catch (error) {
-      console.error("[Auth/Me] Token verification failed:", {
-        message: error.message,
-        name: error.name,
-        tokenPrefix: token?.substring(0, 20),
-      });
       throw new UnauthorizedException("Invalid token");
     }
   }

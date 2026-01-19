@@ -1,4 +1,5 @@
-import { Injectable, UnauthorizedException, ConflictException, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, Logger, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { format } from 'date-fns';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -18,15 +19,22 @@ import { LoanApplication } from '../loan-application/entities/loan-application.e
 import { NotificationService } from '../notification/services/notification.service';
 import { NotificationType } from '../../common/enums/notification-type.enum';
 import { NotificationChannel } from '../../common/enums/notification-channel.enum';
+import { RiskTierService } from '../credit-scoring-engine/services/risk-tier.service';
+import { ScoringHistoryService } from '../credit-scoring-engine/services/scoring-history.service';
+import { RiskTier } from '../credit-scoring-engine/entities/risk-tier-config.entity';
 import { NotificationLog } from '../notification/entities/notification-log.entity';
 import { NotificationStatus } from '../../common/enums/notification-status.enum';
-import { format } from 'date-fns';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import { ScheduledPayment, ScheduledPaymentStatus, PaymentAmountType } from './entities/scheduled-payment.entity';
 import { SchedulePaymentDto, CancelScheduledPaymentDto } from './dto/schedule-payment.dto';
 import { LoanRepaymentService } from '../loan-repayment/loan-repayment.service';
 import { RepaymentType } from '../../common/enums/repayment-type.enum';
+import { Company } from '../company/entities/company.entity';
+import { LoanProduct } from '../loan-product/entities/loan-product.entity';
+import { LoanApplicationService } from '../loan-application/loan-application.service';
+import { CreateLoanApplicationDto } from '../loan-application/dto/create-loan-application.dto';
+
 
 @Injectable()
 export class CustomerPortalService {
@@ -51,10 +59,17 @@ export class CustomerPortalService {
     private readonly notificationLogRepository: Repository<NotificationLog>,
     @InjectRepository(ScheduledPayment)
     private readonly scheduledPaymentRepository: Repository<ScheduledPayment>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
+    @InjectRepository(LoanProduct)
+    private readonly loanProductRepository: Repository<LoanProduct>,
     private readonly jwtService: JwtService,
     private readonly accountInquiryService: AccountInquiryService,
     private readonly notificationService: NotificationService,
     private readonly loanRepaymentService: LoanRepaymentService,
+    private readonly riskTierService: RiskTierService,
+    private readonly scoringHistoryService: ScoringHistoryService,
+    private readonly loanApplicationService: LoanApplicationService,
   ) {}
 
   async register(registerDto: CustomerRegisterDto): Promise<{ access_token: string; user: Partial<CustomerPortalUser> }> {
@@ -109,7 +124,7 @@ export class CustomerPortalService {
 
       if (!user) {
         this.logger.warn(`Customer portal login failed: User not found - ${loginDto.email}`);
-        throw new UnauthorizedException('Invalid email or password');
+        throw new NotFoundException('User not found');
       }
 
       if (!user.isActive) {
@@ -121,7 +136,7 @@ export class CustomerPortalService {
       
       if (!isPasswordValid) {
         this.logger.warn(`Customer portal login failed: Invalid password - ${loginDto.email}`);
-        throw new UnauthorizedException('Invalid email or password');
+        throw new BadRequestException('Invalid password provided');
       }
 
       // Optional: Verify loan number if provided
@@ -182,11 +197,15 @@ export class CustomerPortalService {
         user: userWithoutPassword,
       };
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
+      if (
+        error instanceof UnauthorizedException || 
+        error instanceof NotFoundException || 
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
       this.logger.error(`Customer portal login error: ${error.message}`, error.stack);
-      throw new UnauthorizedException('Login failed. Please try again.');
+      throw new InternalServerErrorException('Login failed. Please try again.');
     }
   }
 
@@ -304,6 +323,11 @@ export class CustomerPortalService {
   async getAllDocuments(customerEmail: string, customerId?: string) {
     // Get all loans for customer
     const loans = await this.getMyLoans(customerEmail, customerId);
+    
+    if (loans.length === 0) {
+      return [];
+    }
+    
     const loanIds = loans.map(loan => loan.id);
 
     // Get all statements for customer's loans
@@ -314,23 +338,63 @@ export class CustomerPortalService {
     });
 
     // Format documents for frontend
-    const documents = statements.map(statement => ({
-      id: statement.id,
-      type: 'STATEMENT',
-      documentType: statement.statementType,
-      title: `${statement.statementType} Statement - ${format(new Date(statement.statementDate), 'MMM yyyy')}`,
-      loanNumber: statement.loan?.loanNumber,
-      loanId: statement.loanId,
-      date: statement.statementDate,
-      periodStart: statement.periodStartDate,
-      periodEnd: statement.periodEndDate,
-      fileUrl: statement.fileUrl,
-      filePath: statement.filePath,
-      status: statement.status,
-      createdAt: statement.createdAt,
-    }));
+    const documents = statements.map(statement => {
+      let title = `${statement.statementType || 'Document'} Statement`;
+      try {
+        if (statement.statementDate) {
+          title += ` - ${format(new Date(statement.statementDate), 'MMM yyyy')}`;
+        }
+      } catch (e) {
+        this.logger.warn(`Failed to format statement date: ${statement.statementDate}`);
+      }
+
+      return {
+        id: statement.id,
+        type: 'STATEMENT',
+        documentType: statement.statementType,
+        title,
+        loanNumber: statement.loan?.loanNumber,
+        loanId: statement.loanId,
+        date: statement.statementDate,
+        periodStart: statement.periodStartDate,
+        periodEnd: statement.periodEndDate,
+        fileUrl: statement.fileUrl,
+        filePath: statement.filePath,
+        status: statement.status,
+        createdAt: statement.createdAt,
+      };
+    });
 
     return documents;
+  }
+
+  /**
+   * Get risk tier information for the customer
+   */
+  async getRiskTier(customerId: string) {
+    const latestScore = await this.scoringHistoryService.getLatestScore(customerId);
+    
+    if (!latestScore) {
+      return null;
+    }
+
+    const tier = latestScore.riskTier as RiskTier;
+    // Note: We're not passing companyId here to use defaults or simpler logic if needed
+    // In a multi-tenant system, we might need to find the company associated with the user's loans
+    const tierInfo = await this.riskTierService.getTierInfo(tier);
+
+    return {
+      tier: tierInfo.tier,
+      displayName: tierInfo.displayName,
+      description: tierInfo.description,
+      badgeColor: tierInfo.badgeColor,
+      iconUrl: tierInfo.iconUrl,
+      benefits: tierInfo.benefits,
+      limitations: tierInfo.limitations,
+      scoreRange: tierInfo.scoreRange,
+      currentScore: latestScore.finalScore,
+      lastCalculatedAt: latestScore.calculatedAt,
+    };
   }
 
   async getCurrentUser(userId: string): Promise<Partial<CustomerPortalUser>> {
@@ -1185,5 +1249,40 @@ export class CustomerPortalService {
 
     return saved;
   }
+
+  // Loan Application Methods for Customers
+
+  async getAvailableCompanies(): Promise<Company[]> {
+    return this.companyRepository.find({
+      where: { isActive: true },
+      order: { name: 'ASC' },
+    });
+  }
+
+  async getLoanProductsByCompany(companyId: string): Promise<LoanProduct[]> {
+    return this.loanProductRepository.find({
+      where: { companyId, disabled: false },
+      order: { productName: 'ASC' },
+    });
+  }
+
+  async submitApplication(customerId: string, dto: CreateLoanApplicationDto): Promise<LoanApplication> {
+    // Ensure the applicantId is the customer's ID
+    const applicationDto = {
+      ...dto,
+      applicantId: customerId,
+      applicantType: 'Customer' as any,
+    };
+
+    return this.loanApplicationService.create(applicationDto, dto.companyId);
+  }
+
+  async getMyApplications(customerId: string): Promise<LoanApplication[]> {
+    return this.loanApplicationRepository.find({
+      where: { applicantId: customerId },
+      order: { createdAt: 'DESC' },
+    });
+  }
 }
+
 

@@ -55,6 +55,16 @@ export class AuthService {
       this.logger.debug(`User validated successfully: ${email}`);
       return result;
     } catch (error) {
+      // Re-throw known NestJS HttpExceptions
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof UnauthorizedException ||
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+
       this.logger.error(`Error validating user: ${error.message}`, error.stack);
       // Check if it's a database connection error
       if (error.message?.includes('connect') || error.message?.includes('ECONNREFUSED')) {

@@ -29,7 +29,7 @@ export class User {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
-  @Column({ type: 'simple-array', default: 'user' })
+  @Column({ type: 'simple-array', default: '' })
   roles: string[];
 
   @Column({ nullable: true }) // Nullable for backward compatibility during migration

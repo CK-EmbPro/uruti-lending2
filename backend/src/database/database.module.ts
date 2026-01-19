@@ -139,17 +139,26 @@ import { WorkflowExecutionEnhanced } from '../modules/workflow-engine-enhanced/e
 import { PerformanceProfile } from '../modules/performance-optimization/entities/performance-profile.entity';
 import { OptimizationRecommendation } from '../modules/performance-optimization/entities/optimization-recommendation.entity';
 
+// Missing entities found during investigation
+import { LoanStatement } from '../modules/account-management/entities/loan-statement.entity';
+import { ScheduledPayment } from '../modules/customer-portal/entities/scheduled-payment.entity';
+import { RiskTierConfig } from '../modules/credit-scoring-engine/entities/risk-tier-config.entity';
+import { CreditScoreHistory } from '../modules/credit-scoring-engine/entities/credit-score-history.entity';
+import { PerformanceMetric } from '../modules/credit-scoring-engine/entities/performance-metric.entity';
+import { UptimeLog } from '../modules/health/entities/uptime-log.entity';
+
+
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        host: configService.get('database.host'),
-        port: configService.get('database.port'),
-        username: configService.get('database.username'),
-        password: configService.get('database.password'),
-        database: configService.get('database.database'),
+        host: configService.get<string>('database.host'),
+        port: configService.get<number>('database.port'),
+        username: configService.get<string>('database.username'),
+        password: configService.get<string>('database.password'),
+        database: configService.get<string>('database.database'),
         entities: [
           Loan,
           LoanProduct,
@@ -286,8 +295,7 @@ import { OptimizationRecommendation } from '../modules/performance-optimization/
           DataVisualization,
           DataInsight,
           // Real-Time entities
-          RealTimeConnection,
-          RealTimeMessage,
+          RealTimeConnection, RealTimeMessage,
           // Advanced Caching entities
           CacheEntry,
           // Advanced Security entities
@@ -321,9 +329,16 @@ import { OptimizationRecommendation } from '../modules/performance-optimization/
           // Performance Optimization entities
           PerformanceProfile,
           OptimizationRecommendation,
+          // Added Missing Entities
+          LoanStatement,
+          ScheduledPayment,
+          RiskTierConfig,
+          CreditScoreHistory,
+          PerformanceMetric,
+          UptimeLog,
         ],
-        synchronize: configService.get('database.synchronize'),
-        logging: configService.get('database.logging'),
+        synchronize: configService.get<boolean>('database.synchronize'),
+        logging: configService.get<boolean>('database.logging'),
         extra: {
           max: 10,
         },
@@ -333,4 +348,3 @@ import { OptimizationRecommendation } from '../modules/performance-optimization/
   ],
 })
 export class DatabaseModule {}
-

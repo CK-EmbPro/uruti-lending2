@@ -278,17 +278,7 @@ export class PermissionSeedService {
             ...getPerms('compliance', ['read']),
           ],
         },
-        {
-          name: 'Regular User',
-          roleType: RoleType.USER,
-          description: 'Basic user with limited access',
-          permissions: [
-            ...getPerms('loan', ['read']),
-            ...getPerms('loan-application', ['create', 'read']),
-            ...getPerms('customer', ['read']),
-            ...getPerms('payment', ['read']),
-          ],
-        },
+
       ];
 
       // Create roles

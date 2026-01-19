@@ -28,23 +28,10 @@ export class JwtAuthGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers?.authorization;
-    const cookieToken = request.cookies?.access_token;
-
-    console.log('[JwtAuthGuard] Checking authentication:', {
-      url: request.url,
-      method: request.method,
-      hasAuthHeader: !!authHeader,
-      hasCookieToken: !!cookieToken,
-      authHeaderPrefix: authHeader ? authHeader.substring(0, 20) + '...' : null,
-    });
-
-    // Try to get token from cookie first, then Authorization header
+    // Try to get token from Authorization header
     let token: string | null = null;
     
-    if (cookieToken) {
-      token = cookieToken;
-      console.log('[JwtAuthGuard] Using token from cookie');
-    } else if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
       console.log('[JwtAuthGuard] Using token from Authorization header');
     }

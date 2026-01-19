@@ -9,6 +9,5 @@ export enum RoleType {
   COMPLIANCE_OFFICER = 'Compliance Officer',
   RISK_MANAGER = 'Risk Manager',
   AUDITOR = 'Auditor',
-  USER = 'User',
 }
 
