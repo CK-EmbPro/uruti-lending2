@@ -73,15 +73,16 @@ const formSchema = z.object({
   // Step 3: Financial Info
   annualIncome: z
     .string()
-    .min(1, "Annual income is required")
+    .optional()
     .refine(
       (val) => {
+        if (!val) return true;
         const num = parseFloat(val);
         return !isNaN(num) && num >= 0;
       },
       { message: "Annual income must be a valid number" }
     ),
-  employmentStatus: z.string().min(1, "Employment status is required"),
+  employmentStatus: z.string().optional(),
   monthlyRentMortgage: z
     .string()
     .refine(
@@ -233,6 +234,22 @@ export function PortalMultiStepLoanApplicationForm() {
     return () => subscription.unsubscribe();
   }, [form]);
 
+  // Pre-populate personal details from user profile
+  useEffect(() => {
+    if (user) {
+      if (!form.getValues("fullName")) form.setValue("fullName", user.name || "");
+      if (!form.getValues("email")) form.setValue("email", user.email || "");
+      if (!form.getValues("phoneNumber")) form.setValue("phoneNumber", user.phoneNumber || "");
+      // Note: dateOfBirth and address are new in the user entity, so they might be empty
+      if (!form.getValues("dateOfBirth") && (user as any).dateOfBirth) {
+         form.setValue("dateOfBirth", format(new Date((user as any).dateOfBirth), 'yyyy-MM-dd'));
+      }
+      if (!form.getValues("address") && (user as any).address) {
+         form.setValue("address", (user as any).address || "");
+      }
+    }
+  }, [user, form]);
+
   // Validate loan amount against maximum loan amount when loanAmount or loanProductId changes
   useEffect(() => {
     if (loanAmount && selectedProduct) {
@@ -358,17 +375,26 @@ export function PortalMultiStepLoanApplicationForm() {
         (p) => p.id === data.loanProductId
       );
 
-      // ✅ CORRECTED: Match backend DTO exactly
+      // ✅ CORRECTED: Match backend DTO exactly with personal details snapshot
       const applicationData = {
         // Required fields
         companyId: data.companyId,
         applicantType: "Customer", // Matches ApplicantType enum
-        applicantId: user?.id ?? "", // ✅ Using email as temporary applicantId
+        applicantId: user?.id ?? "",
         loanProductId: data.loanProductId,
-        requestedAmount: parseFloat(data.loanAmount), // ✅ Correct field name
+        requestedAmount: parseFloat(data.loanAmount),
+
+        // Personal Details Snapshot
+        fullName: data.fullName,
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        dateOfBirth: data.dateOfBirth,
+        address: data.address,
+        annualIncome: parseFloat(data.annualIncome || "0"),
+        employmentStatus: data.employmentStatus,
 
         // Optional fields
-        remarks: data.loanPurpose, // ✅ Correct field name
+        remarks: data.loanPurpose,
         applicationDate: new Date().toISOString().split("T")[0],
         repaymentStructure: "FIXED", // Default value
       };

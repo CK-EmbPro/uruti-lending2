@@ -128,7 +128,8 @@ export default function PortalLoanApplicationsPage() {
           ) : (
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {applications.map((app: any) => {
-                const statusInfo = statusMap[app.status] || statusMap.SUBMITTED;
+                const statusKey = (app.status || 'SUBMITTED').toUpperCase();
+                const statusInfo = statusMap[statusKey] || statusMap.SUBMITTED;
                 const StatusIcon = statusInfo.icon;
 
                 return (
@@ -180,10 +181,12 @@ export default function PortalLoanApplicationsPage() {
                           <Button variant="outline" size="sm">Continue</Button>
                         </Link>
                       ) : (
-                        <Button variant="outline" size="sm" className="flex items-center gap-2">
-                          <Eye className="w-4 h-4" />
-                          View
-                        </Button>
+                        <Link href={`/portal/loan-applications/${app.id}`}>
+                          <Button variant="outline" size="sm" className="flex items-center gap-2">
+                            <Eye className="w-4 h-4" />
+                            View
+                          </Button>
+                        </Link>
                       )}
                     </div>
                   </div>

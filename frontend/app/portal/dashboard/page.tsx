@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCustomerPortal } from '@/contexts/CustomerPortalContext';
 import { customerPortalApi } from '@/lib/api/customer-portal';
+import { usePortalLoanApplications } from '@/lib/hooks/usePortalLoanApplication';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -21,6 +22,8 @@ import {
   Plus,
   Settings,
   Bell,
+  Clock,
+  XCircle,
 } from 'lucide-react';
 import { LinkLoanModal } from '@/components/portal/LinkLoanModal';
 import { RiskTierBadge } from '@/components/portal/RiskTierBadge';
@@ -34,6 +37,9 @@ export default function CustomerPortalDashboard() {
   const [isLoadingLoans, setIsLoadingLoans] = useState(true);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState<number>(0);
+
+  // Get applications data
+  const { data: applications, isLoading: isLoadingApplications } = usePortalLoanApplications();
 
   // Get risk tier for the user
   const { data: riskTier, isLoading: isLoadingRiskTier } = useQuery({
@@ -85,6 +91,10 @@ export default function CustomerPortalDashboard() {
 
   const activeLoans = loans.filter((loan) => loan.status === 'ACTIVE' || loan.status === 'SANCTIONED');
   const overdueLoans = loans.filter((loan) => (loan.daysPastDue || 0) > 0);
+  const pendingApplications = applications?.filter((app: any) => 
+    app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW'
+  ) || [];
+  const recentApplications = applications?.slice(0, 3) || [];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -212,7 +222,7 @@ export default function CustomerPortalDashboard() {
         )}
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -242,6 +252,16 @@ export default function CustomerPortalDashboard() {
                 <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{overdueLoans.length}</p>
               </div>
               <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Applications</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{pendingApplications.length}</p>
+              </div>
+              <Clock className="w-8 h-8 text-yellow-600" />
             </div>
           </div>
         </div>
@@ -348,6 +368,64 @@ export default function CustomerPortalDashboard() {
             </div>
           )}
         </div>
+
+        {/* Recent Applications */}
+        {!isLoadingApplications && recentApplications.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow mt-8">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Applications</h2>
+              <Link
+                href="/portal/loan-applications"
+                className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                View All
+              </Link>
+            </div>
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {recentApplications.map((app: any) => {
+                const statusConfig: Record<string, { color: string; icon: any, label: string }> = {
+                  DRAFT: { color: 'bg-gray-100 text-gray-800', icon: Clock, label: 'Draft' },
+                  SUBMITTED: { color: 'bg-blue-100 text-blue-800', icon: Clock, label: 'Submitted' },
+                  UNDER_REVIEW: { color: 'bg-yellow-100 text-yellow-800', icon: AlertCircle, label: 'Under Review' },
+                  APPROVED: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Approved' },
+                  REJECTED: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Rejected' },
+                  CANCELLED: { color: 'bg-gray-100 text-gray-800', icon: XCircle, label: 'Cancelled' },
+                };
+                const statusKey = (app.status || 'SUBMITTED').toUpperCase();
+                const status = statusConfig[statusKey] || statusConfig.SUBMITTED;
+                const StatusIcon = status.icon;
+
+                return (
+                  <Link
+                    key={app.id}
+                    href={`/portal/loan-applications/${app.id}`}
+                    className="block p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {app.applicationNumber}
+                          </h3>
+                          <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${status.color}`}>
+                            <StatusIcon className="w-3.5 h-3.5" />
+                            {status.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
+                          <span>{app.company?.name || 'Company'}</span>
+                          <span>{app.requestedAmount?.toLocaleString()} FRW</span>
+                          <span>{format(new Date(app.createdAt), 'MMM d, yyyy')}</span>
+                        </div>
+                      </div>
+                      <Eye className="w-5 h-5 text-gray-400" />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Link Loan Modal */}
