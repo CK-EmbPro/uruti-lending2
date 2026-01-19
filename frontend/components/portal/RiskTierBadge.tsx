@@ -1,13 +1,8 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/Badge';
 import { Info } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 interface RiskTierBadgeProps {
   tier: 'PRIME' | 'STANDARD' | 'MONITORED' | 'HIGH_RISK';
@@ -66,16 +61,9 @@ export function RiskTierBadge({
           <span className="text-xs font-normal opacity-75">({score})</span>
         )}
         {showTooltip && description && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className={`h-3 w-3 ${config.iconColor} cursor-help`} />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                <p className="text-sm">{description}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip content={description}>
+            <Info className={`h-3 w-3 ${config.iconColor} cursor-help`} />
+          </Tooltip>
         )}
       </span>
     </Badge>

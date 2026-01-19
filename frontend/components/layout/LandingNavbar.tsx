@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useCustomerPortal } from "@/contexts/CustomerPortalContext";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { User, LayoutDashboard, LogOut } from "lucide-react";
 import toast from "react-hot-toast";
 
 export function LandingNavbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isAuthenticated, loading, user, logout } = useAuth();
+  const { isAuthenticated, loading, user, logout } = useCustomerPortal();
   const router = useRouter();
 
   const handleApplyLoan = (e: React.MouseEvent) => {
@@ -21,10 +21,10 @@ export function LandingNavbar() {
         icon: "🔐",
         duration: 4000,
       });
-      router.push("/login");
+      router.push("/portal/login");
       return;
     }
-    router.push("/loan-applications/new");
+    router.push("/portal/dashboard");
   };
 
   const handleLogout = () => {
@@ -34,8 +34,8 @@ export function LandingNavbar() {
 
   const dropdownItems = [
     {
-      label: "Dashboard",
-      onClick: () => router.push("/dashboard"),
+      label: "Portal Dashboard",
+      onClick: () => router.push("/portal/dashboard"),
       icon: <LayoutDashboard className="w-4 h-4" />,
     },
     {
@@ -203,7 +203,7 @@ export function LandingNavbar() {
             <div className="pt-2 space-y-2 border-t border-border-light dark:border-border-dark">
               {!loading && !isAuthenticated && (
                 <>
-                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/portal/login" onClick={() => setMobileMenuOpen(false)}>
                     <button className="w-full flex items-center justify-center rounded-lg h-10 px-4 bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark border border-border-light dark:border-border-dark hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-bold transition-colors">
                       Log In
                     </button>
@@ -232,7 +232,7 @@ export function LandingNavbar() {
                     Apply Now
                   </button>
                   <Link
-                    href="/dashboard"
+                    href="/portal/dashboard"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <button className="w-full flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark border border-border-light dark:border-border-dark hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-bold transition-colors">

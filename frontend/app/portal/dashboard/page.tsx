@@ -38,23 +38,15 @@ export default function CustomerPortalDashboard() {
   // Get risk tier for the user
   const { data: riskTier, isLoading: isLoadingRiskTier } = useQuery({
     queryKey: ['riskTier', user?.id],
-    queryFn: () => riskTierApi.getApplicantRiskTier(user?.id || ''),
+    queryFn: () => customerPortalApi.getRiskTier(),
     enabled: !!user?.id && isAuthenticated,
     retry: false,
   });
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push('/portal/login');
-    }
-  }, [loading, isAuthenticated, router]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadLoans();
-      loadUnreadNotificationCount();
-    }
-  }, [isAuthenticated]);
+    loadLoans();
+    loadUnreadNotificationCount();
+  }, []);
 
   const loadUnreadNotificationCount = async () => {
     try {
@@ -84,16 +76,7 @@ export default function CustomerPortalDashboard() {
     toast.success('Logged out successfully');
   };
 
-  if (loading || !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   const totalOutstanding = loans.reduce((sum, loan) => {
     const balance = (loan.loanAmount || 0) - (loan.totalPrincipalPaid || 0);
@@ -136,6 +119,13 @@ export default function CustomerPortalDashboard() {
                     {(unreadNotificationCount ?? 0) > 99 ? '99+' : (unreadNotificationCount ?? 0)}
                   </span>
                 )}
+              </Link>
+              <Link
+                href="/portal/loan-applications"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <CreditCard className="w-4 h-4" />
+                Loan Applications
               </Link>
               <Link
                 href="/portal/documents"
@@ -185,8 +175,9 @@ export default function CustomerPortalDashboard() {
                     <div>
                       <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Benefits</h4>
                       <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                        {riskTier.benefits.map((benefit, index) => (
+                        {riskTier.benefits.map((benefit: string, index: number) => (
                           <li key={index} className="flex items-start gap-2">
+
                             <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
                             <span>{benefit}</span>
                           </li>
@@ -198,8 +189,9 @@ export default function CustomerPortalDashboard() {
                     <div>
                       <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Limitations</h4>
                       <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                        {riskTier.limitations.map((limitation, index) => (
+                        {riskTier.limitations.map((limitation: string, index: number) => (
                           <li key={index} className="flex items-start gap-2">
+
                             <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                             <span>{limitation}</span>
                           </li>
@@ -258,13 +250,24 @@ export default function CustomerPortalDashboard() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">My Loans</h2>
-            <button
-              onClick={() => setIsLinkModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              Link Loan
-            </button>
+            <div className="flex items-center gap-2">
+              <Link href="/portal/loan-applications/new">
+                <button
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  Apply for Loan
+                </button>
+              </Link>
+              <button
+                onClick={() => setIsLinkModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                <Link2 className="w-4 h-4" />
+                Link Loan
+              </button>
+            </div>
+
           </div>
 
           {isLoadingLoans ? (

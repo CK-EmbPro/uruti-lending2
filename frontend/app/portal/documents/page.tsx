@@ -8,16 +8,18 @@ import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import {
-  FileText,
   Download,
-  ArrowLeft,
-  Search,
+  FileText,
   Filter,
+  Search,
   Calendar,
+  Home,
+  Eye,
+  Loader2,
+  Settings,
+  Bell,
   CreditCard,
-  File,
-  CheckCircle,
-  Clock,
+  LogOut,
 } from 'lucide-react';
 
 interface Document {
@@ -45,17 +47,11 @@ export default function CustomerPortalDocumentsPage() {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterLoan, setFilterLoan] = useState<string>('all');
 
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push('/portal/login');
-    }
-  }, [loading, isAuthenticated, router]);
+
 
   useEffect(() => {
-    if (isAuthenticated) {
-      loadDocuments();
-    }
-  }, [isAuthenticated]);
+    loadDocuments();
+  }, []);
 
   const loadDocuments = async () => {
     try {
@@ -83,7 +79,7 @@ export default function CustomerPortalDocumentsPage() {
         toast.success('Opening document...');
       } else {
         // Otherwise, trigger download via API
-        toast.info('Download functionality will be implemented with file storage');
+        toast.success('Download functionality will be implemented with file storage');
       }
     } catch (error: any) {
       toast.error('Failed to download document');
@@ -105,33 +101,60 @@ export default function CustomerPortalDocumentsPage() {
   const uniqueLoanNumbers = Array.from(new Set(documents.map(doc => doc.loanNumber)));
   const documentTypes = Array.from(new Set(documents.map(doc => doc.type)));
 
-  if (loading || !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+
+
+  const handleLogout = () => {
+    logout();
+    router.push('/portal/login');
+    toast.success('Logged out successfully');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
+      {/* Header with Navigation */}
       <header className="bg-white dark:bg-gray-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/portal/dashboard"
-              className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Back to Dashboard
-            </Link>
-            <div className="flex-1">
+          <div className="flex justify-between items-center">
+            <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Document Center</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Access and download your loan documents</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Access and download your loan documents</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/portal/dashboard"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <Home className="w-4 h-4" />
+                Dashboard
+              </Link>
+              <Link
+                href="/portal/notifications"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <Bell className="w-4 h-4" />
+                Notifications
+              </Link>
+              <Link
+                href="/portal/loan-applications"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <CreditCard className="w-4 h-4" />
+                Loan Applications
+              </Link>
+              <Link
+                href="/portal/settings"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Settings
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
             </div>
           </div>
         </div>

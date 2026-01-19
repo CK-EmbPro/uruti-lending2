@@ -9,15 +9,22 @@ import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
   Bell,
-  ArrowLeft,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Info,
+  Loader2,
+  Home,
   Check,
+  Trash2,
+  MoreVertical,
+  FileText,
+  Settings,
+  CreditCard,
+  LogOut,
   CheckCheck,
   Filter,
   Search,
-  AlertCircle,
-  Info,
-  CheckCircle,
-  XCircle,
   Clock,
 } from 'lucide-react';
 
@@ -42,18 +49,12 @@ export default function CustomerPortalNotificationsPage() {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push('/portal/login');
-    }
-  }, [loading, isAuthenticated, router]);
+
 
   useEffect(() => {
-    if (isAuthenticated) {
-      loadNotifications();
-      loadUnreadCount();
-    }
-  }, [isAuthenticated, filter]);
+    loadNotifications();
+    loadUnreadCount();
+  }, [filter]);
 
   const loadNotifications = async () => {
     try {
@@ -129,38 +130,66 @@ export default function CustomerPortalNotificationsPage() {
 
   const unreadNotifications = filteredNotifications.filter((n) => !n.readAt);
 
-  if (loading || !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+
+
+  const handleLogout = () => {
+    logout();
+    router.push('/portal/login');
+    toast.success('Logged out successfully');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
+      {/* Header with Navigation */}
       <header className="bg-white dark:bg-gray-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Notifications</h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}` : 'All caught up!'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
               <Link
                 href="/portal/dashboard"
-                className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
-                <ArrowLeft className="w-5 h-5" />
-                Back to Dashboard
+                <Home className="w-4 h-4" />
+                Dashboard
               </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Notifications</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}` : 'All caught up!'}
-                </p>
-              </div>
+              <Link
+                href="/portal/loan-applications"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <CreditCard className="w-4 h-4" />
+                Loan Applications
+              </Link>
+              <Link
+                href="/portal/documents"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                Documents
+              </Link>
+              <Link
+                href="/portal/settings"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Settings
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
             </div>
+          </div>
+          {/* Mark all as read button */}
+          <div className="mt-4">
             {unreadNotifications.length > 0 && (
               <button
                 onClick={handleMarkAllAsRead}

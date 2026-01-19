@@ -9,14 +9,23 @@ import {
   User,
   Mail,
   Phone,
+  Calendar,
+  MapPin,
   Lock,
-  Save,
-  ArrowLeft,
+  Home,
   Eye,
   EyeOff,
+  Loader2,
   CheckCircle,
+  XCircle,
   AlertCircle,
+  FileText,
+  Bell,
+  CreditCard,
+  LogOut,
+  Settings as SettingsIcon,
   Shield,
+  Save,
   QrCode,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -53,11 +62,7 @@ export default function CustomerPortalSettingsPage() {
   const [isMfaEnabled, setIsMfaEnabled] = useState(false);
   const [disableMfaToken, setDisableMfaToken] = useState('');
 
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push('/portal/login');
-    }
-  }, [loading, isAuthenticated, router]);
+
 
   useEffect(() => {
     if (user) {
@@ -133,33 +138,60 @@ export default function CustomerPortalSettingsPage() {
     }
   };
 
-  if (loading || !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+
+
+  const handleLogout = () => {
+    logout();
+    router.push('/portal/login');
+    toast.success('Logged out successfully');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
+      {/* Header with Navigation */}
       <header className="bg-white dark:bg-gray-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/portal/dashboard"
-              className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Back to Dashboard
-            </Link>
-            <div className="flex-1">
+          <div className="flex justify-between items-center">
+            <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Account Settings</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Manage your account information and preferences</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Manage your account information and preferences</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/portal/dashboard"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <Home className="w-4 h-4" />
+                Dashboard
+              </Link>
+              <Link
+                href="/portal/notifications"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <Bell className="w-4 h-4" />
+                Notifications
+              </Link>
+              <Link
+                href="/portal/loan-applications"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <CreditCard className="w-4 h-4" />
+                Loan Applications
+              </Link>
+              <Link
+                href="/portal/documents"
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                Documents
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
             </div>
           </div>
         </div>

@@ -27,24 +27,20 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <ErrorBoundary>
-          <QueryProvider>
-            <AuthProvider>
-              <CustomerPortalProvider>
-                {children}
-                <ChatbotProvider />
-                <Toaster
-                  position="top-right"
-                  toastOptions={{
-                    duration: 3000,
-                    style: {
-                      background: "#363636",
-                      color: "#fff",
-                    },
-                  }}
-                />
-              </CustomerPortalProvider>
-            </AuthProvider>
-          </QueryProvider>
+            <QueryProvider>
+              {children}
+              <ChatbotProvider />
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 3000,
+                  style: {
+                    background: "#363636",
+                    color: "#fff",
+                  },
+                }}
+              />
+            </QueryProvider>
         </ErrorBoundary>
       </body>
     </html>

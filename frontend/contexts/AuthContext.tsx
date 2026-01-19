@@ -7,7 +7,7 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { authApi, type AuthResponse } from "@/lib/api/auth";
 
 interface User {
@@ -34,12 +34,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
+  
+  const isAuthenticated = !!user && !!token;
+  
   const isVerifyingRef = useRef(false);
   const isLoggingInRef = useRef(false);
 
   const verifySession = async () => {
     if (isVerifyingRef.current) {
       console.log("[AuthContext] Verification already in progress");
+      return;
+    }
+
+    const savedToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    if (!savedToken) {
+      setLoading(false);
       return;
     }
 
@@ -50,19 +60,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userData = await authApi.getCurrentUser();
       console.log("[AuthContext] Session verified:", userData.email);
       setUser(userData);
-      setToken("cookie-set");
+      setToken(savedToken);
     } catch (error: any) {
-      console.warn("[AuthContext] Session verification failed:", {
-        status: error?.response?.status,
-        message: error?.message,
-      });
-
-      const is401 = error?.response?.status === 401;
-      if (is401) {
-        console.log("[AuthContext] 401 - Clearing auth state");
-        setUser(null);
-        setToken(null);
-      }
+      console.warn("[AuthContext] Session verification failed, clearing state");
+      localStorage.removeItem('access_token');
+      setUser(null);
+      setToken(null);
     } finally {
       setLoading(false);
       isVerifyingRef.current = false;
@@ -75,6 +78,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     verifySession();
   }, []);
 
+  // Handle redirection for admin routes
+  useEffect(() => {
+    if (loading) return;
+
+    // List of public routes that don't need auth
+    const publicRoutes = [
+      '/',
+      '/login',
+      '/register',
+      '/forgot-password',
+      '/loan-applications',
+    ];
+
+    const isPublicRoute = publicRoutes.some(route => 
+      pathname === route || pathname.startsWith('/reset-password')
+    );
+
+    // If unauthenticated and trying to access a non-public route, redirect to login
+    if (!isAuthenticated && !isPublicRoute) {
+      console.log('[AuthContext] Redirecting unauthenticated user to login');
+      router.push('/login');
+    }
+  }, [loading, isAuthenticated, pathname, router]);
+
   const login = async (email: string, password: string): Promise<User> => {
     if (isLoggingInRef.current) {
       throw new Error("Login already in progress");
@@ -84,46 +111,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoggingInRef.current = true;
 
     try {
-      // Step 1: Login and get response (backend sets cookie)
       const response: AuthResponse = await authApi.login({ email, password });
       console.log("[AuthContext] Login API successful");
 
-      // Step 2: Update state
-      setUser(response.user);
-      setToken("cookie-set");
-      setLoading(false);
-
-      // Step 3: Verify cookie with a retry mechanism
-      console.log("[AuthContext] Verifying cookie...");
-      let verified = false;
-      let attempts = 0;
-      const maxAttempts = 3;
-
-      while (!verified && attempts < maxAttempts) {
-        try {
-          await authApi.getCurrentUser();
-          verified = true;
-          console.log("[AuthContext] Cookie verified successfully");
-        } catch (verifyError: any) {
-          attempts++;
-          if (attempts < maxAttempts) {
-            console.warn(
-              `[AuthContext] Verification attempt ${attempts} failed, retrying...`
-            );
-            await new Promise((resolve) => setTimeout(resolve, 300));
-          } else {
-            console.error(
-              "[AuthContext] Cookie verification failed after retries"
-            );
-            throw new Error("Authentication failed - cookie not properly set");
-          }
-        }
+      if (response.access_token) {
+        localStorage.setItem("access_token", response.access_token);
+        setUser(response.user);
+        setToken(response.access_token);
+        setLoading(false);
       }
 
-      console.log("[AuthContext] Login complete and verified");
       return response.user;
     } catch (error: any) {
       console.error("[AuthContext] Login error:", error.message);
+      localStorage.removeItem('access_token');
       setUser(null);
       setToken(null);
       throw error;
@@ -144,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
         name,
       });
-      localStorage.setItem("auth_token", response.access_token);
+      localStorage.setItem("access_token", response.access_token);
       setToken(response.access_token);
       setUser(response.user);
       setLoading(false);
@@ -160,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("[AuthContext] Logout error:", error);
     } finally {
+      localStorage.removeItem("access_token");
       setUser(null);
       setToken(null);
       console.log("[AuthContext] Logged out");
@@ -171,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const isAuthenticated = !!user && !!token;
+
 
   return (
     <AuthContext.Provider

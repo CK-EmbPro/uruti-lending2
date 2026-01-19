@@ -48,12 +48,9 @@ export default function LoginPage() {
       console.error("[LoginPage] Login failed:", error);
       setIsSubmitting(false);
 
-      let errorMessage = "Login failed";
-      if (error?.message?.includes("cookie not properly set")) {
-        errorMessage = "Authentication error. Please try again.";
-      } else if (error?.response?.status === 401) {
-        errorMessage = "Invalid email or password";
-      } else if (error?.code === "ECONNABORTED") {
+      let errorMessage = error.response?.data?.message || error.message || "Login failed";
+      
+      if (error?.code === "ECONNABORTED") {
         errorMessage = "Connection timeout. Please try again.";
       } else if (!error?.response && error?.request) {
         errorMessage = "Cannot connect to server.";

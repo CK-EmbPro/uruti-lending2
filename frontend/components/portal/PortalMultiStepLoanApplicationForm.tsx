@@ -30,10 +30,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { useCreateLoanApplication } from "@/lib/hooks/useLoanApplication";
-import { useLoanProducts } from "@/lib/hooks/useLoanProduct";
-import { useCompanies } from "@/lib/hooks/useCompany";
+import { useCustomerPortal } from "@/contexts/CustomerPortalContext";
+import { 
+  usePortalCompanies, 
+  usePortalLoanProducts, 
+  useSubmitPortalLoanApplication 
+} from "@/lib/hooks/usePortalLoanApplication";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
@@ -143,9 +145,9 @@ const STEPS = [
 
 const DRAFT_STORAGE_KEY = "loan-application-draft";
 
-export function MultiStepLoanApplicationForm() {
+export function PortalMultiStepLoanApplicationForm() {
   const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user } = useCustomerPortal();
   const [currentStep, setCurrentStep] = useState(1);
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -154,9 +156,8 @@ export function MultiStepLoanApplicationForm() {
     Record<string, boolean>
   >({});
 
-  const createApplication = useCreateLoanApplication();
-  const { data: companies, isLoading: companiesLoading } = useCompanies();
-  const { data: loanProducts, isLoading: productsLoading } = useLoanProducts();
+  const submitApplication = useSubmitPortalLoanApplication();
+  const { data: companies, isLoading: companiesLoading } = usePortalCompanies();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -180,6 +181,10 @@ export function MultiStepLoanApplicationForm() {
       agreedToTerms: false,
     },
   });
+
+  // Watch companyId to fetch relevant products
+  const companyId = form.watch("companyId");
+  const { data: loanProducts, isLoading: productsLoading } = usePortalLoanProducts(companyId);
 
   // Watch loanAmount and loanProductId for validation
   const loanAmount = form.watch("loanAmount");
@@ -329,7 +334,7 @@ export function MultiStepLoanApplicationForm() {
       toast.error("Please log in first to submit your loan application", {
         icon: "🔐",
       });
-      router.push("/login");
+      router.push("/portal/login");
       return;
     }
 
@@ -370,13 +375,13 @@ export function MultiStepLoanApplicationForm() {
 
       console.log("Submitting application data:", applicationData);
 
-      await createApplication.mutateAsync(applicationData);
+      await submitApplication.mutateAsync(applicationData);
 
       // Clear draft after successful submission
       localStorage.removeItem(DRAFT_STORAGE_KEY);
 
       toast.success("Application submitted successfully!", { icon: "✅" });
-      router.push("/loan-applications");
+      router.push("/portal/loan-applications");
     } catch (error: any) {
       console.error("Submission error:", error);
       toast.error(
@@ -427,7 +432,7 @@ export function MultiStepLoanApplicationForm() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link
-              href="/dashboard"
+              href="/portal/dashboard"
               className="flex items-center gap-3 text-text-light dark:text-text-dark hover:opacity-80 transition-opacity"
             >
               <div className="p-1.5 rounded-lg bg-primary/10">
@@ -2323,14 +2328,14 @@ export function MultiStepLoanApplicationForm() {
                       <Button
                         type="submit"
                         disabled={
-                          createApplication.isPending ||
+                          submitApplication.isPending ||
                           !form.watch("agreedToTerms") ||
                           loanAmountExceedsMax
                         }
-                        isLoading={createApplication.isPending}
+                        isLoading={submitApplication.isPending}
                         className="w-full sm:w-auto min-w-[180px] flex items-center"
                       >
-                        {createApplication.isPending ? (
+                        {submitApplication.isPending ? (
                           <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                             Submitting...
@@ -2778,6 +2783,5 @@ function HelpModal({
     </Modal>
   );
 }
-
 
 
