@@ -163,6 +163,13 @@ export class IntegrationService {
         loanProductId: loanProduct.id,
         requestedAmount: dto.requestedAmount,
         applicationDate: new Date().toISOString().split('T')[0],
+        // Snapshot mandatory fields
+        fullName: [dto.customer.firstName, dto.customer.lastName].filter(Boolean).join(' ') || 'External Applicant',
+        email: dto.customer.email || '',
+        phoneNumber: dto.customer.phone || '',
+        dateOfBirth: dto.customer.dateOfBirth || '',
+        address: dto.customer.address || '',
+        status: ApplicationStatus.SUBMITTED,
       }, dto.companyId);
 
       // Set initial status to PENDING for external applications

@@ -25,6 +25,12 @@ export class CustomerPortalUser {
   @Column({ nullable: true })
   phoneNumber: string;
 
+  @Column({ type: 'date', nullable: true })
+  dateOfBirth: Date;
+
+  @Column({ type: 'text', nullable: true })
+  address: string;
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 

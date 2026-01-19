@@ -60,6 +60,16 @@ export class ExternalCustomerDto {
   @IsObject()
   @IsOptional()
   metadata?: Record<string, any>;
+
+  @ApiPropertyOptional({ description: 'Date of birth', example: '1990-01-01' })
+  @IsDateString()
+  @IsOptional()
+  dateOfBirth?: string;
+
+  @ApiPropertyOptional({ description: 'Address' })
+  @IsString()
+  @IsOptional()
+  address?: string;
 }
 
 export class CreateExternalLoanApplicationDto {

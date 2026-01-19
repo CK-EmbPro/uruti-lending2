@@ -79,7 +79,7 @@ export class LoanApplicationService {
       applicationDate: createDto.applicationDate
         ? new Date(createDto.applicationDate)
         : new Date(),
-      status: ApplicationStatus.DRAFT,
+      status: createDto.status || ApplicationStatus.DRAFT,
     });
 
     return await this.applicationRepository.save(application);

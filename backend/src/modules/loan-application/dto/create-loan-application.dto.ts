@@ -8,6 +8,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ApplicantType } from '../../../common/enums/applicant-type.enum';
+import { ApplicationStatus } from '../entities/loan-application.entity';
 
 export class CreateLoanApplicationDto {
   @ApiProperty({ description: 'Company ID', example: 'company-uuid' })
@@ -49,5 +50,41 @@ export class CreateLoanApplicationDto {
   @IsString()
   @IsOptional()
   repaymentStructure?: string;
+
+  @ApiPropertyOptional({ description: 'Initial status of the application', enum: ApplicationStatus })
+  @IsEnum(ApplicationStatus)
+  @IsOptional()
+  status?: ApplicationStatus;
+
+  @ApiProperty({ description: 'Full name of the applicant' })
+  @IsString()
+  fullName: string;
+
+  @ApiProperty({ description: 'Email of the applicant' })
+  @IsString()
+  email: string;
+
+  @ApiProperty({ description: 'Phone number of the applicant' })
+  @IsString()
+  phoneNumber: string;
+
+  @ApiProperty({ description: 'Date of birth of the applicant' })
+  @IsDateString()
+  dateOfBirth: string;
+
+  @ApiProperty({ description: 'Address of the applicant' })
+  @IsString()
+  address: string;
+
+  @ApiPropertyOptional({ description: 'Annual income of the applicant' })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  annualIncome?: number;
+
+  @ApiPropertyOptional({ description: 'Employment status of the applicant' })
+  @IsString()
+  @IsOptional()
+  employmentStatus?: string;
 }
 

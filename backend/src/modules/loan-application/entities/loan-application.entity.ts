@@ -5,7 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Company } from '../../company/entities/company.entity';
+import { LoanProduct } from '../../loan-product/entities/loan-product.entity';
 
 export enum ApplicationStatus {
   DRAFT = 'Draft',
@@ -41,6 +45,27 @@ export class LoanApplication {
 
   @Column('decimal', { precision: 15, scale: 2 })
   requestedAmount: number;
+
+  @Column({ nullable: true })
+  fullName: string;
+
+  @Column({ nullable: true })
+  email: string;
+
+  @Column({ nullable: true })
+  phoneNumber: string;
+
+  @Column({ type: 'date', nullable: true })
+  dateOfBirth: Date;
+
+  @Column({ type: 'text', nullable: true })
+  address: string;
+
+  @Column('decimal', { precision: 15, scale: 2, nullable: true })
+  annualIncome: number;
+
+  @Column({ nullable: true })
+  employmentStatus: string;
 
   @Column('decimal', { precision: 15, scale: 2, nullable: true })
   approvedAmount: number;
@@ -117,5 +142,13 @@ export class LoanApplication {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @ManyToOne(() => Company)
+  @JoinColumn({ name: 'companyId' })
+  company: Company;
+
+  @ManyToOne(() => LoanProduct)
+  @JoinColumn({ name: 'loanProductId' })
+  loanProduct: LoanProduct;
 }
 

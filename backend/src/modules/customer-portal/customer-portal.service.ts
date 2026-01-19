@@ -15,7 +15,7 @@ import { AccountInquiryService } from '../account-management/services/account-in
 import { CustomerLoanLink } from './entities/customer-loan-link.entity';
 import { LinkLoanDto } from './dto/link-loan.dto';
 import { VerifyLoanLinkDto, VerificationAction } from './dto/verify-loan-link.dto';
-import { LoanApplication } from '../loan-application/entities/loan-application.entity';
+import { LoanApplication, ApplicationStatus } from '../loan-application/entities/loan-application.entity';
 import { NotificationService } from '../notification/services/notification.service';
 import { NotificationType } from '../../common/enums/notification-type.enum';
 import { NotificationChannel } from '../../common/enums/notification-channel.enum';
@@ -1268,10 +1268,11 @@ export class CustomerPortalService {
 
   async submitApplication(customerId: string, dto: CreateLoanApplicationDto): Promise<LoanApplication> {
     // Ensure the applicantId is the customer's ID
-    const applicationDto = {
+    const applicationDto: CreateLoanApplicationDto = {
       ...dto,
       applicantId: customerId,
       applicantType: 'Customer' as any,
+      status: ApplicationStatus.SUBMITTED,
     };
 
     return this.loanApplicationService.create(applicationDto, dto.companyId);
@@ -1280,6 +1281,7 @@ export class CustomerPortalService {
   async getMyApplications(customerId: string): Promise<LoanApplication[]> {
     return this.loanApplicationRepository.find({
       where: { applicantId: customerId },
+      relations: ['company', 'loanProduct'],
       order: { createdAt: 'DESC' },
     });
   }
