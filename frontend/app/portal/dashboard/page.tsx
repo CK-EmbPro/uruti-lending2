@@ -23,6 +23,7 @@ import {
   Settings,
   Bell,
   Clock,
+  HelpCircle,
   XCircle,
 } from 'lucide-react';
 import { LinkLoanModal } from '@/components/portal/LinkLoanModal';
@@ -89,11 +90,15 @@ export default function CustomerPortalDashboard() {
     return sum + balance;
   }, 0);
 
-  const activeLoans = loans.filter((loan) => loan.status === 'ACTIVE' || loan.status === 'SANCTIONED');
+  const activeLoans = loans.filter((loan) => {
+    const status = (loan.status || '').toUpperCase();
+    return status === 'ACTIVE' || status === 'SANCTIONED';
+  });
   const overdueLoans = loans.filter((loan) => (loan.daysPastDue || 0) > 0);
-  const pendingApplications = applications?.filter((app: any) => 
-    app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW'
-  ) || [];
+  const pendingApplications = applications?.filter((app: any) => {
+    const status = (app.status || '').toUpperCase();
+    return status === 'SUBMITTED' || status === 'UNDER_REVIEW';
+  }) || [];
   const recentApplications = applications?.slice(0, 3) || [];
 
   return (
@@ -137,6 +142,17 @@ export default function CustomerPortalDashboard() {
                 <CreditCard className="w-4 h-4" />
                 Loan Applications
               </Link>
+              <button
+                onClick={() => {
+                  toast("Support: support@uruti.com | Phone: 1-800-URUTI", {
+                    icon: "ℹ️",
+                  });
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+              >
+                <HelpCircle className="w-4 h-4" />
+                Support
+              </button>
               <Link
                 href="/portal/documents"
                 className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"

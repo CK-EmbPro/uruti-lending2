@@ -17,6 +17,7 @@ import {
   Bell,
   LogOut,
   CreditCard,
+  HelpCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -83,6 +84,17 @@ export default function PortalLoanApplicationsPage() {
                 <Settings className="w-4 h-4" />
                 Settings
               </Link>
+              <button
+                onClick={() => {
+                  toast("Support: support@uruti.com | Phone: 1-800-URUTI", {
+                    icon: "ℹ️",
+                  });
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+              >
+                <HelpCircle className="w-4 h-4" />
+                Support
+              </button>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"

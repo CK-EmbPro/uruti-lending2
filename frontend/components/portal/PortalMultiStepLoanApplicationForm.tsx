@@ -452,59 +452,7 @@ export function PortalMultiStepLoanApplicationForm() {
   }
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col font-display bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark">
-      {/* Header */}
-      <header className="sticky top-0 z-10 w-full bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm border-b border-border-light dark:border-border-dark">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <Link
-              href="/portal/dashboard"
-              className="flex items-center gap-3 text-text-light dark:text-text-dark hover:opacity-80 transition-opacity"
-            >
-              <div className="p-1.5 rounded-lg bg-primary/10">
-                <Building2 className="w-6 h-6 text-primary" />
-              </div>
-              <h1 className="text-xl font-bold">Uruti Lending</h1>
-            </Link>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleSaveDraft}
-                disabled={isDraftSaving}
-                className="flex min-w-[84px] items-center justify-center rounded-lg h-10 px-4 text-text-light dark:text-text-dark text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isDraftSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    <span>Save Progress</span>
-                  </>
-                )}
-              </button>
-              {lastSaved && (
-                <span className="text-xs text-gray-500 hidden sm:block">
-                  Last saved: {lastSaved.toLocaleTimeString()}
-                </span>
-              )}
-              <button
-                className="flex items-center gap-2 min-w-[84px] justify-center rounded-lg h-10 px-4 bg-gray-200 dark:bg-gray-700 text-text-light dark:text-text-dark text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                onClick={() =>
-                  toast("Support: support@uruti.com | Phone: 1-800-URUTI", {
-                    icon: "ℹ️",
-                  })
-                }
-              >
-                <HelpCircle className="w-4 h-4" />
-                <span>Support</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <div className="w-full font-display text-text-light dark:text-text-dark">
       {/* Main Content */}
       <main className="flex-1 w-full py-12 md:py-20">
         <div className="container mx-auto px-4 max-w-4xl">
