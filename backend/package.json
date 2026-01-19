@@ -30,7 +30,9 @@
     "seed:micro-lending": "ts-node -r tsconfig-paths/register src/scripts/seed-micro-lending-products.ts",
     "seed:saved-searches": "ts-node -r tsconfig-paths/register src/scripts/seed-saved-searches.ts",
     "seed:customer-portal": "ts-node -r tsconfig-paths/register src/scripts/seed-customer-portal.ts",
-    "seed:ml-training-data": "ts-node -r tsconfig-paths/register src/scripts/seed-ml-training-data.ts"
+    "seed:ml-training-data": "ts-node -r tsconfig-paths/register src/scripts/seed-ml-training-data.ts",
+    "seed:workflows": "ts-node -r tsconfig-paths/register src/scripts/seed-workflows.ts",
+    "seed:permissions": "ts-node -r tsconfig-paths/register src/scripts/seed-permissions.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",

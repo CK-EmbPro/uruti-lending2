@@ -284,13 +284,15 @@ export class LoanApplicationService {
     application.approvedBy = userId || null;
     application.approvedAmount = application.approvedAmount || application.requestedAmount;
 
-    // Save the application first
+    // Save the application
     const savedApplication = await this.applicationRepository.save(application);
+    this.logger.log(`Loan application ${id} approved successfully`);
 
-    // Automatically create loan from approved application
+
+       // Automatically create loan from approved application
     if (autoCreateLoan && savedApplication.status === ApplicationStatus.APPROVED && !savedApplication.loanId) {
       try {
-        const createdLoan = await this.createLoanFromApplication(id, companyId, false);
+        const createdLoan = await this.createLoanFromApplication(id, companyId);
         this.logger.log(
           `Loan ${createdLoan.loanNumber} automatically created from approved application ${savedApplication.applicationNumber}`,
         );
@@ -303,7 +305,7 @@ export class LoanApplicationService {
       }
     }
 
-    // Reload application to get updated loanId if loan was created
+    // Reload application to get updated status
     const finalApplication = await this.findOne(id, companyId);
 
     // Send notification when application is approved
@@ -328,6 +330,8 @@ export class LoanApplicationService {
       this.logger.error(`Failed to send external platform webhook for application approval: ${error.message}`);
       // Don't throw - internal notification succeeded, webhook failure is logged
     }
+
+ 
 
     return finalApplication;
   }
