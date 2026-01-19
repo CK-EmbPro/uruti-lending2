@@ -101,7 +101,7 @@ export default function LoanApplicationDetailPage() {
   };
 
   const statusColor = getStatusColor(application.status || '');
-  const loanProductName = loanProduct?.name || 'Loan Product';
+  const loanProductName = loanProduct?.productName || 'Loan Product';
   
   // Calculate key metrics
   const loanAmount = application.loanAmount || application.requestedAmount || 0;
@@ -182,7 +182,7 @@ export default function LoanApplicationDetailPage() {
                     <p className="text-gray-600 text-[10px] font-medium uppercase tracking-wide">Rate</p>
                   </div>
                   <p className="text-gray-900 text-sm font-bold leading-tight">
-                    {application.rateOfInterest || 'N/A'}%
+                    {loanProduct?.rateOfInterest || 'N/A'}%
                   </p>
                 </div>
                 <div className="flex flex-col gap-0.5 p-3">
@@ -254,10 +254,10 @@ export default function LoanApplicationDetailPage() {
                           <dd className="text-sm font-semibold text-gray-900">{application.applicantPhoneNumber}</dd>
                         </div>
                       )}
-                      {application.applicantEmailAddress && (
+                      {application.email && (
                         <div>
                           <dt className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">Email Address</dt>
-                          <dd className="text-sm font-semibold text-gray-900">{application.applicantEmailAddress}</dd>
+                          <dd className="text-sm font-semibold text-gray-900">{application.email}</dd>
                         </div>
                       )}
                     </dl>
@@ -380,7 +380,7 @@ export default function LoanApplicationDetailPage() {
                   {canApprove && (
                     <Button 
                       onClick={() => approveApplication.mutate(applicationId)}
-                      className="w-full bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-lg transition-all"
+                      className="w-full flex items-center gap-2 bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-lg transition-all"
                       disabled={approveApplication.isPending}
                     >
                       <CheckCircle className="w-4 h-4 mr-2" />
@@ -404,7 +404,7 @@ export default function LoanApplicationDetailPage() {
                     currentState={application.status}
                     onActionComplete={() => window.location.reload()}
                   />
-                  <Button variant="outline" className="w-full border-gray-300">
+                  <Button variant="outline" className="w-full flex items-center gap-2 border-gray-300">
                     <Download className="w-4 h-4 mr-2" />
                     Export PDF
                   </Button>

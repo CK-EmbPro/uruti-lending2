@@ -71,6 +71,7 @@ export function CreditAssessmentSection({ applicationId, applicationStatus }: Cr
           {canPerformDecision && !creditDecision && (
             <Button
               variant="primary"
+              className='flex items-center'
               onClick={() => performCreditDecision.mutate(applicationId)}
               disabled={performCreditDecision.isPending}
             >
@@ -81,7 +82,7 @@ export function CreditAssessmentSection({ applicationId, applicationStatus }: Cr
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 mr-2" />
+                  <Sparkles className="w-10  h-10 mr-2" />
                   Run Credit Decision
                 </>
               )}
@@ -90,6 +91,7 @@ export function CreditAssessmentSection({ applicationId, applicationStatus }: Cr
           {canDetectFraud && (
             <Button
               variant="outline"
+              className='flex items-center'
               onClick={() => detectFraud.mutate(applicationId)}
               disabled={detectFraud.isPending}
             >
@@ -100,7 +102,7 @@ export function CreditAssessmentSection({ applicationId, applicationStatus }: Cr
                 </>
               ) : (
                 <>
-                  <Shield className="w-4 h-4 mr-2" />
+                  <Shield className="w-10 h-10 mr-2" />
                   Detect Fraud
                 </>
               )}
