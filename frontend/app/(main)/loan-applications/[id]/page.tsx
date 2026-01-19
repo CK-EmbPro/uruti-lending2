@@ -48,6 +48,7 @@ export default function LoanApplicationDetailPage() {
   const approveApplication = useApproveLoanApplication();
   const createLoan = useCreateLoanFromApplication();
 
+
   if (isLoading) {
     return (
       <div className="px-4 py-8 md:px-8 lg:px-12 xl:px-20">
@@ -83,6 +84,7 @@ export default function LoanApplicationDetailPage() {
 
   const canApprove = application.status === 'Submitted' || application.status === 'Draft' || application.status === 'SUBMITTED' || application.status === 'DRAFT';
   const canCreateLoan = application.status === 'Approved' || application.status === 'APPROVED';
+
 
   const getStatusColor = (status: string) => {
     if (status === 'Approved' || status === 'APPROVED') {
@@ -387,17 +389,18 @@ export default function LoanApplicationDetailPage() {
                       {approveApplication.isPending ? 'Approving...' : 'Approve Application'}
                     </Button>
                   )}
+
                   {canCreateLoan && (
-                    <Button
-                      variant="secondary"
+                    <Button 
                       onClick={() => createLoan.mutate(applicationId)}
-                      className="w-full bg-secondary hover:bg-secondary/90 text-white shadow-md hover:shadow-lg transition-all"
+                      className="w-full flex items-center gap-2 bg-secondary hover:bg-secondary/90 text-white shadow-md hover:shadow-lg transition-all"
                       disabled={createLoan.isPending}
                     >
                       <DollarSign className="w-4 h-4 mr-2" />
-                      {createLoan.isPending ? 'Creating...' : 'Create Loan'}
+                      {createLoan.isPending ? 'Creating Loan...' : 'Create Loan'}
                     </Button>
                   )}
+
                   <WorkflowActions
                     documentType="Loan Application"
                     documentId={applicationId}
