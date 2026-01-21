@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { LoanApplication, ApplicationStatus } from './entities/loan-application.entity';
 import { Loan } from '../loan/entities/loan.entity';
 import { LoanStatus } from '../../common/enums/loan-status.enum';
@@ -34,6 +34,8 @@ export class LoanApplicationService {
     @Inject(forwardRef(() => IntegrationService))
     private readonly integrationService: IntegrationService,
     private readonly weightedScoringService: WeightedCreditScoringService,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) { }
 
   async create(createDto: CreateLoanApplicationDto, companyId: string): Promise<LoanApplication> {
@@ -198,7 +200,7 @@ export class LoanApplicationService {
   //   };
   // }
 
-   async findAll(
+  async findAll(
     companyId: string,
     filters?: {
       status?: string;
@@ -215,9 +217,10 @@ export class LoanApplicationService {
       page?: number;
       limit?: number;
     },
-  ): Promise<{ data: LoanApplication[]
+  ): Promise<{
+    data: LoanApplication[]
     ; total: number; page: number; limit: number; totalPages: number; hasNext: boolean; hasPrevious: boolean
-   }> {
+  }> {
     if (!companyId) {
       throw new BadRequestException('Company ID is required');
     }
@@ -278,8 +281,8 @@ export class LoanApplicationService {
     if (filters?.search) {
       queryBuilder.andWhere(
         '(LOWER(application.applicationNumber) LIKE LOWER(:search) OR ' +
-          'LOWER(application.applicantId) LIKE LOWER(:search) OR ' +
-          'LOWER(COALESCE(application.remarks, \'\')) LIKE LOWER(:search))',
+        'LOWER(application.applicantId) LIKE LOWER(:search) OR ' +
+        'LOWER(COALESCE(application.remarks, \'\')) LIKE LOWER(:search))',
         { search: `%${filters.search}%` },
       );
     }
@@ -397,32 +400,52 @@ export class LoanApplicationService {
     application.approvedBy = userId || null;
     application.approvedAmount = application.approvedAmount || application.requestedAmount;
 
-    // Save the application
-    const savedApplication = await this.applicationRepository.save(application);
-    this.logger.log(`Loan application ${id} approved successfully`);
+    // Use transaction to ensure atomicity of approval AND loan creation
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
+    let savedApplication: LoanApplication;
+    let createdLoan: Loan | null = null;
 
-    // Automatically create loan from approved application
-    this.logger.log(`Checking auto-create loan: autoCreateLoan=${autoCreateLoan}, status=${savedApplication.status}, loanId=${savedApplication.loanId}`);
-    if (autoCreateLoan && savedApplication.status === ApplicationStatus.APPROVED && !savedApplication.loanId) {
-      try {
-        const createdLoan = await this.createLoanFromApplication(id, companyId);
+    try {
+      // Save the application within the transaction
+      savedApplication = await queryRunner.manager.save(LoanApplication, application);
+      this.logger.log(`Loan application ${id} approved successfully (within transaction)`);
+
+      // Automatically create loan from approved application
+      this.logger.log(`Checking auto-create loan: autoCreateLoan=${autoCreateLoan}, status=${savedApplication.status}, loanId=${savedApplication.loanId}`);
+      if (autoCreateLoan && savedApplication.status === ApplicationStatus.APPROVED && !savedApplication.loanId) {
+        // Create loan within the same transaction
+        createdLoan = await this.createLoanFromApplicationTransactional(queryRunner, savedApplication, companyId);
         this.logger.log(
           `Loan ${createdLoan.loanNumber} automatically created from approved application ${savedApplication.applicationNumber}`,
         );
-      } catch (error) {
-        this.logger.error(
-          `Failed to automatically create loan from approved application ${savedApplication.applicationNumber}: ${error.message}`,
-          error.stack,
-        );
-        // Don't throw - approval succeeded, loan creation can be retried manually
       }
+
+      // Commit the transaction - both approval and loan creation succeeded
+      await queryRunner.commitTransaction();
+      this.logger.log(`Transaction committed for application ${id}`);
+
+    } catch (error) {
+      // Rollback the entire transaction - revert approval if loan creation fails
+      await queryRunner.rollbackTransaction();
+      this.logger.error(
+        `Transaction rolled back for application ${id}: ${error.message}`,
+        error.stack,
+      );
+      // Re-throw the error so the user sees a meaningful message
+      throw new BadRequestException(
+        `Failed to approve application and create loan: ${error.message}`,
+      );
+    } finally {
+      await queryRunner.release();
     }
 
-    // Reload application to get updated status
+    // Reload application to get updated status (now committed)
     const finalApplication = await this.findOne(id, companyId);
 
-    // Send notification when application is approved
+    // Send notification when application is approved (non-critical, outside transaction)
     try {
       await this.notificationHelper.notifyApplicationApproved(
         finalApplication,
@@ -434,7 +457,7 @@ export class LoanApplicationService {
       this.logger.error(`Failed to send application approved notification: ${error.message}`);
     }
 
-    // Notify external platform if this is an external application
+    // Notify external platform if this is an external application (non-critical, outside transaction)
     try {
       await this.integrationService.notifyApplicationApproved(
         finalApplication.id,
@@ -444,8 +467,6 @@ export class LoanApplicationService {
       this.logger.error(`Failed to send external platform webhook for application approval: ${error.message}`);
       // Don't throw - internal notification succeeded, webhook failure is logged
     }
-
-
 
     return finalApplication;
   }
@@ -543,6 +564,8 @@ export class LoanApplicationService {
     await this.applicationRepository.remove(application);
   }
 
+
+  //This method is still needed in the seeding script
   async createLoanFromApplication(
     applicationId: string,
     companyId: string,
@@ -659,6 +682,127 @@ export class LoanApplicationService {
     // 1. Loan Security Assignment entity
     // 2. Proposed Pledges table in Loan Application
     // 3. Security assignment service
+
+    return savedLoan;
+  }
+
+  /**
+   * Create loan from application within an existing transaction.
+   * This method is used by the approve() method to ensure atomicity.
+   */
+  private async createLoanFromApplicationTransactional(
+    queryRunner: import('typeorm').QueryRunner,
+    application: LoanApplication,
+    companyId: string,
+    submit: boolean = false,
+  ): Promise<Loan> {
+    this.logger.log(`Creating loan from application ${application.id} for company ${companyId} (transactional). Application Product ID: ${application.loanProductId}`);
+
+    // Business Rule: Only approved applications can create loans
+    if (application.status !== ApplicationStatus.APPROVED) {
+      throw new BadRequestException(
+        `Loan can only be created from APPROVED applications. Current status: ${application.status}`,
+      );
+    }
+
+    // Business Rule: Check if loan already created from this application
+    if (application.loanId) {
+      const existingLoan = await queryRunner.manager.findOne(Loan, {
+        where: { id: application.loanId, companyId },
+      });
+      if (existingLoan) {
+        throw new BadRequestException(
+          `Loan already created from this application. Loan ID: ${application.loanId}`,
+        );
+      }
+    }
+
+    // Get loan product (verify it belongs to company)
+    const loanProduct = await queryRunner.manager.findOne(LoanProduct, {
+      where: { id: application.loanProductId, companyId },
+    });
+
+    if (!loanProduct) {
+      throw new NotFoundException(
+        `Loan Product with ID ${application.loanProductId} not found or does not belong to your company`,
+      );
+    }
+
+    // Determine loan amount (use approved amount, fallback to requested)
+    const loanAmount = application.approvedAmount || application.requestedAmount;
+
+    // Business Rule: For secured loans, validate against maximum loan amount
+    if (application.isSecuredLoan && application.maximumLoanAmount) {
+      if (loanAmount > application.maximumLoanAmount) {
+        throw new BadRequestException(
+          `Loan amount (${loanAmount}) cannot exceed maximum loan amount from securities (${application.maximumLoanAmount})`,
+        );
+      }
+    }
+
+    // Business Rule: Validate loan amount against product maximum
+    if (
+      loanProduct.maximumLoanAmount &&
+      loanAmount > loanProduct.maximumLoanAmount
+    ) {
+      throw new BadRequestException(
+        `Loan amount (${loanAmount}) exceeds maximum loan amount of product (${loanProduct.maximumLoanAmount})`,
+      );
+    }
+
+    // Create loan DTO from application
+    // Handle date conversion (could be Date object or string from DB)
+    const applicationDate = application.applicationDate instanceof Date
+      ? application.applicationDate
+      : new Date(application.applicationDate);
+
+    // Generate loan number
+    const loanNumber = await this.generateLoanNumber();
+
+    // Create loan entity directly (instead of using LoanService.create to stay within transaction)
+    const loan = queryRunner.manager.create(Loan, {
+      loanNumber,
+      companyId: application.companyId,
+      applicantType: application.applicantType as any,
+      applicantId: application.applicantId,
+      loanProductId: application.loanProductId,
+      loanAmount,
+      postingDate: applicationDate,
+      repaymentStartDate: application.repaymentStartDate
+        ? (application.repaymentStartDate instanceof Date
+          ? application.repaymentStartDate
+          : new Date(application.repaymentStartDate))
+        : null,
+      status: submit ? LoanStatus.SANCTIONED : LoanStatus.DRAFT,
+      isTermLoan: loanProduct.isTermLoan,
+      isSecuredLoan: application.isSecuredLoan || false,
+      rateOfInterest: loanProduct.rateOfInterest,
+      penaltyInterestRate: loanProduct.penaltyInterestRate,
+      repaymentScheduleType: loanProduct.repaymentScheduleType as any,
+      repaymentPeriods: application.repaymentPeriods,
+      repaymentFrequency: application.repaymentFrequency as any,
+      repaymentMethod: application.repaymentMethod,
+      repaymentStructure: application.repaymentStructure,
+      // Copy accounts from loan product
+      disbursementAccount: loanProduct.disbursementAccount,
+      paymentAccount: loanProduct.paymentAccount,
+      loanAccount: loanProduct.loanAccount,
+      interestIncomeAccount: loanProduct.interestIncomeAccount,
+      penaltyIncomeAccount: loanProduct.penaltyIncomeAccount,
+    });
+
+    // Update loan with additional fields from application
+    if (application.isSecuredLoan && application.maximumLoanAmount) {
+      loan.maximumLoanAmount = application.maximumLoanAmount;
+    }
+
+    const savedLoan = await queryRunner.manager.save(Loan, loan);
+
+    // Link application to loan
+    application.loanId = savedLoan.id;
+    await queryRunner.manager.save(LoanApplication, application);
+
+    this.logger.log(`Loan ${savedLoan.loanNumber} created and linked to application ${application.applicationNumber} (transactional)`);
 
     return savedLoan;
   }
@@ -845,26 +989,92 @@ export class LoanApplicationService {
 
   private async generateApplicationNumber(): Promise<string> {
     const year = new Date().getFullYear();
-    const count = await this.applicationRepository.count({
-      where: {
-        applicationDate: new Date(year, 0, 1) as any, // Start of year
-      } as any,
-    });
+    const prefix = `APP-${year}-`;
 
-    const sequence = (count + 1).toString().padStart(6, '0');
-    return `APP-${year}-${sequence}`;
+    // Find the maximum existing application number for this year
+    const result = await this.applicationRepository
+      .createQueryBuilder('app')
+      .select('MAX(app.applicationNumber)', 'maxNumber')
+      .where('app.applicationNumber LIKE :prefix', { prefix: `${prefix}%` })
+      .getRawOne();
+
+    let sequence = 1;
+    if (result?.maxNumber) {
+      // Extract the sequence number from the existing max number
+      const match = result.maxNumber.match(/APP-\d{4}-(\d+)/);
+      if (match) {
+        sequence = parseInt(match[1], 10) + 1;
+      }
+    }
+
+    // Generate the candidate number and verify uniqueness
+    let candidateNumber = `${prefix}${sequence.toString().padStart(6, '0')}`;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (attempts < maxAttempts) {
+      const existing = await this.applicationRepository.findOne({
+        where: { applicationNumber: candidateNumber },
+      });
+
+      if (!existing) {
+        return candidateNumber;
+      }
+
+      // Number exists, increment and try again
+      sequence++;
+      candidateNumber = `${prefix}${sequence.toString().padStart(6, '0')}`;
+      attempts++;
+    }
+
+    // Fallback: add timestamp to ensure uniqueness
+    const timestamp = Date.now().toString().slice(-6);
+    return `${prefix}${timestamp}`;
   }
 
   private async generateLoanNumber(): Promise<string> {
     const year = new Date().getFullYear();
-    const count = await this.loanRepository.count({
-      where: {
-        postingDate: new Date(year, 0, 1) as any, // Start of year
-      } as any,
-    });
+    const prefix = `LOAN-${year}-`;
 
-    const sequence = (count + 1).toString().padStart(6, '0');
-    return `LOAN-${year}-${sequence}`;
+    // Find the maximum existing loan number for this year
+    const result = await this.loanRepository
+      .createQueryBuilder('loan')
+      .select('MAX(loan.loanNumber)', 'maxNumber')
+      .where('loan.loanNumber LIKE :prefix', { prefix: `${prefix}%` })
+      .getRawOne();
+
+    let sequence = 1;
+    if (result?.maxNumber) {
+      // Extract the sequence number from the existing max number
+      const match = result.maxNumber.match(/LOAN-\d{4}-(\d+)/);
+      if (match) {
+        sequence = parseInt(match[1], 10) + 1;
+      }
+    }
+
+    // Generate the candidate number and verify uniqueness
+    let candidateNumber = `${prefix}${sequence.toString().padStart(6, '0')}`;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (attempts < maxAttempts) {
+      const existing = await this.loanRepository.findOne({
+        where: { loanNumber: candidateNumber },
+      });
+
+      if (!existing) {
+        return candidateNumber;
+      }
+
+      // Number exists, increment and try again
+      sequence++;
+      candidateNumber = `${prefix}${sequence.toString().padStart(6, '0')}`;
+      attempts++;
+    }
+
+    // Fallback: add timestamp to ensure uniqueness
+    const timestamp = Date.now().toString().slice(-6);
+    return `${prefix}${timestamp}`;
   }
 
   async performWorkflowAction(

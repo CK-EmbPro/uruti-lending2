@@ -21,7 +21,7 @@ export class PreApprovalService {
     private readonly applicationRepository: Repository<LoanApplication>,
     private readonly approvalPredictor: ApprovalPredictorService,
     private readonly financialHealthService: FinancialHealthService,
-  ) {}
+  ) { }
 
   /**
    * Create a pre-approval
@@ -258,15 +258,48 @@ export class PreApprovalService {
    */
   private async generatePreApprovalCode(companyId: string): Promise<string> {
     const year = new Date().getFullYear();
-    const count = await this.preApprovalRepository.count({
-      where: {
-        companyId,
-        createdAt: new Date(year, 0, 1) as any,
-      } as any,
-    });
+    const prefix = `PRE-${year}-`;
 
-    const sequence = (count + 1).toString().padStart(6, '0');
-    return `PRE-${year}-${sequence}`;
+    // Find the maximum existing pre-approval code for this year and company
+    const result = await this.preApprovalRepository
+      .createQueryBuilder('pre')
+      .select('MAX(pre.preApprovalCode)', 'maxCode')
+      .where('pre.companyId = :companyId', { companyId })
+      .andWhere('pre.preApprovalCode LIKE :prefix', { prefix: `${prefix}%` })
+      .getRawOne();
+
+    let sequence = 1;
+    if (result?.maxCode) {
+      // Extract the sequence number from the existing max code
+      const match = result.maxCode.match(/PRE-\d{4}-(\d+)/);
+      if (match) {
+        sequence = parseInt(match[1], 10) + 1;
+      }
+    }
+
+    // Generate the candidate code and verify uniqueness
+    let candidateCode = `${prefix}${sequence.toString().padStart(6, '0')}`;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (attempts < maxAttempts) {
+      const existing = await this.preApprovalRepository.findOne({
+        where: { preApprovalCode: candidateCode },
+      });
+
+      if (!existing) {
+        return candidateCode;
+      }
+
+      // Code exists, increment and try again
+      sequence++;
+      candidateCode = `${prefix}${sequence.toString().padStart(6, '0')}`;
+      attempts++;
+    }
+
+    // Fallback: add timestamp to ensure uniqueness
+    const timestamp = Date.now().toString().slice(-6);
+    return `${prefix}${timestamp}`;
   }
 }
 
