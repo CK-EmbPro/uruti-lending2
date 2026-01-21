@@ -47,9 +47,6 @@ export class AccountSeedService {
           company = this.companyRepository.create({
             name: 'Uruti Lending Company',
             code: 'URUTI',
-            email: 'info@urutilending.com',
-            address: '123 Financial Street, Business District',
-            phone: '+1-555-0123',
             isActive: true,
           });
           company = await this.companyRepository.save(company);

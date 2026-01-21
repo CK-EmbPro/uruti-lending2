@@ -15,6 +15,7 @@ import {
   BadRequestException,
   NotFoundException,
   Res,
+  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -40,28 +41,31 @@ import { JwtService } from '@nestjs/jwt';
 @ApiTags('customer-portal')
 @Controller('customer-portal')
 export class CustomerPortalController {
+  private readonly logger = new Logger(CustomerPortalController.name)
+
   constructor(
     private readonly customerPortalService: CustomerPortalService,
     private readonly jwtService: JwtService,
-  ) {}
+
+  ) { }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ 
-    summary: 'Register customer portal account', 
-    description: 'Creates a new customer portal account' 
+  @ApiOperation({
+    summary: 'Register customer portal account',
+    description: 'Creates a new customer portal account'
   })
   @ApiBody({ type: CustomerRegisterDto })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: 'Customer registered successfully',
-    schema: { 
-      type: 'object', 
-      properties: { 
-        access_token: { type: 'string' }, 
-        user: { type: 'object' } 
-      } 
-    } 
+    schema: {
+      type: 'object',
+      properties: {
+        access_token: { type: 'string' },
+        user: { type: 'object' }
+      }
+    }
   })
   @ApiResponse({ status: 409, description: 'Customer already exists' })
   async register(@Body() registerDto: CustomerRegisterDto) {
@@ -70,23 +74,23 @@ export class CustomerPortalController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
-    summary: 'Customer portal login', 
-    description: 'Authenticates a customer and returns JWT token' 
+  @ApiOperation({
+    summary: 'Customer portal login',
+    description: 'Authenticates a customer and returns JWT token'
   })
   @ApiBody({ type: CustomerLoginDto })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Login successful or MFA required',
-    schema: { 
-      type: 'object', 
-      properties: { 
-        access_token: { type: 'string' }, 
+    schema: {
+      type: 'object',
+      properties: {
+        access_token: { type: 'string' },
         tempToken: { type: 'string' },
         requiresMfa: { type: 'boolean' },
-        user: { type: 'object' } 
-      } 
-    } 
+        user: { type: 'object' }
+      }
+    }
   })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() loginDto: CustomerLoginDto) {
@@ -138,7 +142,7 @@ export class CustomerPortalController {
 
     try {
       const payload = this.jwtService.verify(token);
-      
+
       if (payload.type !== 'customer') {
         throw new UnauthorizedException('Invalid token type');
       }
@@ -250,7 +254,7 @@ export class CustomerPortalController {
     @Headers('authorization') authHeader?: string,
   ) {
     const payload = this.validateToken(req, authHeader);
-    return this.customerPortalService.getMyLoans(payload.email, payload.sub);
+    return this.customerPortalService.getMyLoans(payload.sub);
   }
 
   @Get('loans/:id')
@@ -269,7 +273,7 @@ export class CustomerPortalController {
     @Headers('authorization') authHeader?: string,
   ) {
     const payload = this.validateToken(req, authHeader);
-    return this.customerPortalService.getMyLoan(loanId, payload.email, payload.sub);
+    return this.customerPortalService.getMyLoan(loanId, payload.sub);
   }
 
   @Get('loans/:id/summary')
@@ -286,7 +290,7 @@ export class CustomerPortalController {
     @Headers('authorization') authHeader?: string,
   ) {
     const payload = this.validateToken(req, authHeader);
-    return this.customerPortalService.getLoanSummary(loanId, payload.email, payload.sub);
+    return this.customerPortalService.getLoanSummary(loanId, payload.sub);
   }
 
   @Get('loans/:id/payment-history')
@@ -305,7 +309,7 @@ export class CustomerPortalController {
     @Headers('authorization') authHeader?: string,
   ) {
     const payload = this.validateToken(req, authHeader);
-    return this.customerPortalService.getPaymentHistory(loanId, payload.email, payload.sub, limit);
+    return this.customerPortalService.getPaymentHistory(loanId, payload.sub, limit);
   }
 
   @Get('loans/:id/upcoming-payments')
@@ -324,7 +328,7 @@ export class CustomerPortalController {
     @Headers('authorization') authHeader?: string,
   ) {
     const payload = this.validateToken(req, authHeader);
-    return this.customerPortalService.getUpcomingPayments(loanId, payload.email, payload.sub, limit);
+    return this.customerPortalService.getUpcomingPayments(loanId, payload.sub, limit);
   }
 
   @Get('loans/:id/statements')
@@ -341,7 +345,7 @@ export class CustomerPortalController {
     @Headers('authorization') authHeader?: string,
   ) {
     const payload = this.validateToken(req, authHeader);
-    return this.customerPortalService.getStatements(loanId, payload.email, payload.sub);
+    return this.customerPortalService.getStatements(loanId, payload.sub);
   }
 
   @Post('loans/link')
@@ -361,7 +365,7 @@ export class CustomerPortalController {
     @Headers('authorization') authHeader?: string,
   ) {
     const payload = this.validateToken(req, authHeader);
-    return this.customerPortalService.linkLoan(payload.sub, payload.email, linkDto);
+    return this.customerPortalService.linkLoan(payload.sub, linkDto);
   }
 
   @Delete('loans/:id/link')
@@ -397,7 +401,7 @@ export class CustomerPortalController {
     @Headers('authorization') authHeader?: string,
   ) {
     const payload = this.validateToken(req, authHeader);
-    return this.customerPortalService.getAllDocuments(payload.email, payload.sub);
+    return this.customerPortalService.getAllDocuments(payload.sub);
   }
 
   @Get('notifications')
@@ -551,7 +555,7 @@ export class CustomerPortalController {
     const payload = this.validateToken(req, authHeader);
     // Set loanId from param
     dto.loanId = loanId;
-    return this.customerPortalService.schedulePayment(dto, payload.email, payload.sub);
+    return this.customerPortalService.schedulePayment(dto, payload.sub);
   }
 
   @Get('loans/:id/scheduled-payments')
@@ -568,7 +572,7 @@ export class CustomerPortalController {
     @Headers('authorization') authHeader?: string,
   ) {
     const payload = this.validateToken(req, authHeader);
-    return this.customerPortalService.getScheduledPayments(loanId, payload.email, payload.sub);
+    return this.customerPortalService.getScheduledPayments(loanId, payload.sub);
   }
 
   @Delete('scheduled-payments/:id')
@@ -590,7 +594,6 @@ export class CustomerPortalController {
     return this.customerPortalService.cancelScheduledPayment(
       scheduledPaymentId,
       dto,
-      payload.email,
       payload.sub,
     );
   }
@@ -664,6 +667,7 @@ export class CustomerPortalController {
 
     try {
       const payload = this.jwtService.verify(token);
+      this.logger.warn(`Customer id ${payload.sub} requested`)
       return this.customerPortalService.getMyApplications(payload.sub);
     } catch (e) {
       throw new UnauthorizedException('Invalid token');

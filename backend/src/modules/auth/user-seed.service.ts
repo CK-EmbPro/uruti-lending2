@@ -21,13 +21,13 @@ export class UserSeedService {
    * Get or create a default company for seeding
    */
   private async getOrCreateDefaultCompany(): Promise<Company> {
-    let company = await this.companyRepository.findOne({ where: { code: 'DEFAULT' } });
+    let company = await this.companyRepository.findOne({ where: { code: 'URUTI' } });
     
     if (!company) {
-      this.logger.log('Creating default seed company...');
+      this.logger.log('Creating Uruti Lending Company for seeding...');
       company = this.companyRepository.create({
-        name: 'Uruti Lending Default',
-        code: 'DEFAULT',
+        name: 'Uruti Lending Company',
+        code: 'URUTI',
         isActive: true,
       });
       company = await this.companyRepository.save(company);

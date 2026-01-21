@@ -209,28 +209,26 @@ export class CustomerPortalService {
     }
   }
 
-  async getMyLoans(customerEmail: string, customerId?: string): Promise<Loan[]> {
-    // Find loans where applicantId matches customer email
-    const loansByEmail = await this.loanRepository.find({
+  async getMyLoans(customerId: string): Promise<Loan[]> {
+    // Find loans where applicantId matches customerId (UUID)
+    // const uniqueLoans = await this.loanRepository.find()
+    const loansById = await this.loanRepository.find({
       where: [
-        { applicantId: customerEmail },
+        { applicantId: customerId, applicantType: 'Customer' as any },
       ],
       relations: ['loanProduct'],
       order: { createdAt: 'DESC' },
     });
 
     // Find loans linked to customer account
-    let linkedLoans: Loan[] = [];
-    if (customerId) {
-      const links = await this.loanLinkRepository.find({
-        where: { customerId, isVerified: true },
-        relations: ['loan', 'loan.loanProduct'],
-      });
-      linkedLoans = links.map(link => link.loan).filter(Boolean);
-    }
+    const links = await this.loanLinkRepository.find({
+      where: { customerId, isVerified: true },
+      relations: ['loan', 'loan.loanProduct'],
+    });
+    const linkedLoans = links.map(link => link.loan).filter(Boolean);
 
     // Combine and deduplicate by loan ID
-    const allLoans = [...loansByEmail, ...linkedLoans];
+    const allLoans = [...loansById, ...linkedLoans];
     const uniqueLoans = allLoans.filter((loan, index, self) =>
       index === self.findIndex(l => l.id === loan.id)
     );
@@ -238,18 +236,19 @@ export class CustomerPortalService {
     return uniqueLoans;
   }
 
-  async getMyLoan(loanId: string, customerEmail: string, customerId?: string): Promise<Loan> {
-    // First check if loan matches by email
+  async getMyLoan(loanId: string, customerId: string): Promise<Loan> {
+    // First check if loan matches by UUID
     let loan = await this.loanRepository.findOne({
       where: { 
         id: loanId,
-        applicantId: customerEmail,
+        applicantId: customerId,
+        applicantType: 'Customer' as any,
       },
       relations: ['loanProduct'],
     });
 
     // If not found, check if it's linked to customer account
-    if (!loan && customerId) {
+    if (!loan) {
       const link = await this.loanLinkRepository.findOne({
         where: { 
           loanId,
@@ -271,17 +270,17 @@ export class CustomerPortalService {
     return loan;
   }
 
-  async getLoanSummary(loanId: string, customerEmail: string, customerId?: string) {
+  async getLoanSummary(loanId: string, customerId: string) {
     // Verify loan belongs to customer
-    await this.getMyLoan(loanId, customerEmail, customerId);
+    await this.getMyLoan(loanId, customerId);
 
     // Get account summary using account inquiry service
     return this.accountInquiryService.getAccountSummary(loanId);
   }
 
-  async getPaymentHistory(loanId: string, customerEmail: string, customerId?: string, limit?: number) {
+  async getPaymentHistory(loanId: string, customerId: string, limit?: number) {
     // Verify loan belongs to customer
-    await this.getMyLoan(loanId, customerEmail, customerId);
+    await this.getMyLoan(loanId, customerId);
 
     const repayments = await this.repaymentRepository.find({
       where: { loanId },
@@ -292,9 +291,9 @@ export class CustomerPortalService {
     return repayments;
   }
 
-  async getUpcomingPayments(loanId: string, customerEmail: string, customerId?: string, limit?: number) {
+  async getUpcomingPayments(loanId: string, customerId: string, limit?: number) {
     // Verify loan belongs to customer
-    await this.getMyLoan(loanId, customerEmail, customerId);
+    await this.getMyLoan(loanId, customerId);
 
     const upcoming = await this.scheduleRepository.find({
       where: { 
@@ -308,9 +307,9 @@ export class CustomerPortalService {
     return upcoming;
   }
 
-  async getStatements(loanId: string, customerEmail: string, customerId?: string) {
+  async getStatements(loanId: string, customerId: string) {
     // Verify loan belongs to customer
-    await this.getMyLoan(loanId, customerEmail, customerId);
+    await this.getMyLoan(loanId, customerId);
 
     const statements = await this.statementRepository.find({
       where: { loanId },
@@ -320,9 +319,9 @@ export class CustomerPortalService {
     return statements;
   }
 
-  async getAllDocuments(customerEmail: string, customerId?: string) {
+  async getAllDocuments(customerId: string) {
     // Get all loans for customer
-    const loans = await this.getMyLoans(customerEmail, customerId);
+    const loans = await this.getMyLoans(customerId);
     
     if (loans.length === 0) {
       return [];
@@ -885,7 +884,7 @@ export class CustomerPortalService {
     return this.loanLinkRepository.save(link);
   }
 
-  async linkLoan(customerId: string, customerEmail: string, linkDto: LinkLoanDto): Promise<{ loan: Loan; link: CustomerLoanLink }> {
+  async linkLoan(customerId: string, linkDto: LinkLoanDto): Promise<{ loan: Loan; link: CustomerLoanLink }> {
     // Find the loan by loan number
     const loan = await this.loanRepository.findOne({
       where: { loanNumber: linkDto.loanNumber },
@@ -908,25 +907,22 @@ export class CustomerPortalService {
       // If link exists but not verified, we'll update it
     }
 
-    // Verify ownership - check if applicantId matches customer email
+    // Verify ownership - check if applicantId matches customerId
     let isVerified = false;
     let verificationMethod = 'LOAN_NUMBER';
 
-    if (loan.applicantId === customerEmail) {
-      // Direct match by email
+    if (loan.applicantId === customerId) {
+      // Direct match by UUID (portal application)
       isVerified = true;
-      verificationMethod = 'EMAIL_MATCH';
+      verificationMethod = 'UUID_MATCH';
     } else {
       // Try to find loan application to get more customer info
       const application = await this.loanApplicationRepository.findOne({
         where: { loanId: loan.id },
       });
 
-      // Additional verification could be added here (phone, SSN, etc.)
-      // For now, if email doesn't match, we'll create an unverified link
-      // Admin can verify it later, or we can add more verification steps
-      
-      // If customer provided email and it matches loan applicantId, verify
+      // Additional verification based on provider form data (not portal account email)
+      // If customer provided an email in the link form and it matches loan applicantId, verify
       if (linkDto.email && loan.applicantId === linkDto.email) {
         isVerified = true;
         verificationMethod = 'EMAIL_VERIFICATION';
@@ -962,7 +958,7 @@ export class CustomerPortalService {
 
     const savedLink = await this.loanLinkRepository.save(link);
 
-    this.logger.log(`Loan ${loan.loanNumber} linked to customer ${customerEmail} (verified: ${isVerified})`);
+    this.logger.log(`Loan ${loan.loanNumber} linked to customer ${customerId} (verified: ${isVerified})`);
 
     return { loan, link: savedLink };
   }
@@ -1047,13 +1043,9 @@ export class CustomerPortalService {
    */
   async schedulePayment(
     dto: SchedulePaymentDto,
-    customerEmail: string,
     customerId: string,
   ): Promise<ScheduledPayment> {
-    // Verify loan belongs to customer
-    const loan = await this.getMyLoan(dto.loanId, customerEmail, customerId);
-
-    // Get customer user
+    // Get customer user to get email for notification (not for lookup)
     const customer = await this.customerUserRepository.findOne({
       where: { id: customerId },
     });
@@ -1061,6 +1053,9 @@ export class CustomerPortalService {
     if (!customer) {
       throw new NotFoundException('Customer not found');
     }
+
+    // Verify loan belongs to customer
+    const loan = await this.getMyLoan(dto.loanId, customerId);
 
     // Calculate payment amount
     const calculatedAmount = await this.calculatePaymentAmount(
@@ -1105,7 +1100,7 @@ export class CustomerPortalService {
       subject: 'Payment Scheduled',
       body: `Your payment of $${calculatedAmount.toFixed(2)} has been scheduled for ${format(scheduledDate, 'MMM d, yyyy')}`,
       metadata: {
-        recipientEmail: customerEmail,
+        recipientEmail: customer.email,
         loanId: dto.loanId,
         scheduledPaymentId: saved.id,
         amount: calculatedAmount,
@@ -1172,11 +1167,10 @@ export class CustomerPortalService {
    */
   async getScheduledPayments(
     loanId: string,
-    customerEmail: string,
-    customerId?: string,
+    customerId: string,
   ): Promise<ScheduledPayment[]> {
     // Verify loan belongs to customer
-    await this.getMyLoan(loanId, customerEmail, customerId);
+    await this.getMyLoan(loanId, customerId);
 
     return await this.scheduledPaymentRepository.find({
       where: {
@@ -1197,7 +1191,6 @@ export class CustomerPortalService {
   async cancelScheduledPayment(
     scheduledPaymentId: string,
     dto: CancelScheduledPaymentDto,
-    customerEmail: string,
     customerId: string,
   ): Promise<ScheduledPayment> {
     const scheduledPayment = await this.scheduledPaymentRepository.findOne({
@@ -1215,7 +1208,7 @@ export class CustomerPortalService {
     }
 
     // Verify loan belongs to customer
-    await this.getMyLoan(scheduledPayment.loanId, customerEmail, customerId);
+    await this.getMyLoan(scheduledPayment.loanId, customerId);
 
     // Check if can be cancelled
     if (scheduledPayment.status === ScheduledPaymentStatus.COMPLETED) {
@@ -1241,7 +1234,7 @@ export class CustomerPortalService {
       subject: 'Payment Cancelled',
       body: `Your scheduled payment of $${scheduledPayment.calculatedAmount.toFixed(2)} for ${format(scheduledPayment.scheduledDate, 'MMM d, yyyy')} has been cancelled`,
       metadata: {
-        recipientEmail: customerEmail,
+        recipientEmail: (await this.customerUserRepository.findOne({ where: { id: customerId } }))?.email,
         loanId: scheduledPayment.loanId,
         scheduledPaymentId: saved.id,
       },

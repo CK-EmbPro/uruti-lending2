@@ -34,7 +34,7 @@ export class LoanApplicationService {
     @Inject(forwardRef(() => IntegrationService))
     private readonly integrationService: IntegrationService,
     private readonly weightedScoringService: WeightedCreditScoringService,
-  ) {}
+  ) { }
 
   async create(createDto: CreateLoanApplicationDto, companyId: string): Promise<LoanApplication> {
     if (!companyId) {
@@ -85,7 +85,120 @@ export class LoanApplicationService {
     return await this.applicationRepository.save(application);
   }
 
-  async findAll(
+  // async findAll(
+  //   companyId: string,
+  //   filters?: {
+  //     status?: string;
+  //     applicantType?: string;
+  //     applicantId?: string;
+  //     loanProductId?: string;
+  //     minAmount?: number;
+  //     maxAmount?: number;
+  //     fromDate?: string;
+  //     toDate?: string;
+  //     search?: string;
+  //     sortBy?: string;
+  //     sortOrder?: 'ASC' | 'DESC';
+  //     page?: number;
+  //     limit?: number;
+  //   },
+  // ): Promise<{
+  //   data: LoanApplication[]
+  //   ; total: number; page: number; limit: number; totalPages: number; hasNext: boolean; hasPrevious: boolean
+  // }> {
+  //   if (!companyId) {
+  //     throw new BadRequestException('Company ID is required');
+  //   }
+
+  //   const queryBuilder = this.applicationRepository.createQueryBuilder('application');
+
+
+  //   // if (filters?.applicantType) {
+  //   //   queryBuilder.andWhere('application.applicantType = :applicantType', {
+  //   //     applicantType: filters.applicantType,
+  //   //   });
+  //   // }
+
+  //   // if (filters?.applicantId) {
+  //   //   queryBuilder.andWhere('application.applicantId = :applicantId', {
+  //   //     applicantId: filters.applicantId,
+  //   //   });
+  //   // }
+
+  //   // if (filters?.loanProductId) {
+  //   //   queryBuilder.andWhere('application.loanProductId = :loanProductId', {
+  //   //     loanProductId: filters.loanProductId,
+  //   //   });
+  //   // }
+
+  //   // if (filters?.minAmount !== undefined) {
+  //   //   queryBuilder.andWhere('application.requestedAmount >= :minAmount', {
+  //   //     minAmount: filters.minAmount,
+  //   //   });
+  //   // }
+
+  //   // if (filters?.maxAmount !== undefined) {
+  //   //   queryBuilder.andWhere('application.requestedAmount <= :maxAmount', {
+  //   //     maxAmount: filters.maxAmount,
+  //   //   });
+  //   // }
+
+  //   // if (filters?.fromDate) {
+  //   //   queryBuilder.andWhere('application.applicationDate >= :fromDate', {
+  //   //     fromDate: new Date(filters.fromDate),
+  //   //   });
+  //   // }
+
+  //   // if (filters?.toDate) {
+  //   //   queryBuilder.andWhere('application.applicationDate <= :toDate', {
+  //   //     toDate: new Date(filters.toDate),
+  //   //   });
+  //   // }
+
+  //   // if (filters?.search) {
+  //   //   queryBuilder.andWhere(
+  //   //     '(LOWER(application.applicationNumber) LIKE LOWER(:search) OR ' +
+  //   //       'LOWER(application.applicantId) LIKE LOWER(:search) OR ' +
+  //   //       'LOWER(COALESCE(application.remarks, \'\')) LIKE LOWER(:search))',
+  //   //     { search: `%${filters.search}%` },
+  //   //   );
+  //   // }
+
+  //   // // Apply sorting
+  //   // const sortBy = filters?.sortBy || 'createdAt';
+  //   // const sortOrder = filters?.sortOrder || 'DESC';
+  //   // const allowedSortFields = ['createdAt', 'applicationDate', 'requestedAmount', 'status', 'applicationNumber'];
+  //   // const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+  //   // queryBuilder.orderBy(`application.${finalSortBy}`, sortOrder);
+
+  //   // // Get total count before pagination
+  //   // const total = await queryBuilder.getCount();
+
+  //   // // Apply pagination
+  //   // const page = filters?.page || 1;
+  //   // const limit = filters?.limit || 20;
+  //   // const skip = (page - 1) * limit;
+  //   // queryBuilder.skip(skip).take(limit);
+
+  //   // Execute query
+  //   const data = await queryBuilder.getMany();
+  //   const total = data.length; // Simplified for now since pagination is commented out
+  //   const page = filters?.page || 1;
+  //   const limit = filters?.limit || 20;
+  //   const totalPages = Math.ceil(total / limit);
+
+  //   return {
+  //     data,
+  //     total,
+  //     page,
+  //     limit,
+  //     totalPages,
+  //     hasNext: page < totalPages,
+  //     hasPrevious: page > 1,
+  //   };
+  // }
+
+   async findAll(
     companyId: string,
     filters?: {
       status?: string;
@@ -103,106 +216,106 @@ export class LoanApplicationService {
       limit?: number;
     },
   ): Promise<{ data: LoanApplication[]
-    // ; total: number; page: number; limit: number; totalPages: number; hasNext: boolean; hasPrevious: boolean
+    ; total: number; page: number; limit: number; totalPages: number; hasNext: boolean; hasPrevious: boolean
    }> {
-    // if (!companyId) {
-    //   throw new BadRequestException('Company ID is required');
-    // }
-    companyId ="ce501685-75b0-4893-9b51-debdf9471b7e"
+    if (!companyId) {
+      throw new BadRequestException('Company ID is required');
+    }
+    // companyId ="ce501685-75b0-4893-9b51-debdf9471b7e"
 
     const queryBuilder = this.applicationRepository.createQueryBuilder('application');
 
-    // // Always filter by companyId for multi-tenancy
-    // queryBuilder.where('application.companyId = :companyId', { companyId });
+    // Always filter by companyId for multi-tenancy
+    queryBuilder.where('application.companyId = :companyId', { companyId });
 
-    // // Apply filters
-    // if (filters?.status) {
-    //   queryBuilder.andWhere('application.status = :status', { status: filters.status });
-    // }
+    // Apply filters
+    if (filters?.status) {
+      queryBuilder.andWhere('application.status = :status', { status: filters.status });
+    }
 
-    // if (filters?.applicantType) {
-    //   queryBuilder.andWhere('application.applicantType = :applicantType', {
-    //     applicantType: filters.applicantType,
-    //   });
-    // }
+    if (filters?.applicantType) {
+      queryBuilder.andWhere('application.applicantType = :applicantType', {
+        applicantType: filters.applicantType,
+      });
+    }
 
-    // if (filters?.applicantId) {
-    //   queryBuilder.andWhere('application.applicantId = :applicantId', {
-    //     applicantId: filters.applicantId,
-    //   });
-    // }
+    if (filters?.applicantId) {
+      queryBuilder.andWhere('application.applicantId = :applicantId', {
+        applicantId: filters.applicantId,
+      });
+    }
 
-    // if (filters?.loanProductId) {
-    //   queryBuilder.andWhere('application.loanProductId = :loanProductId', {
-    //     loanProductId: filters.loanProductId,
-    //   });
-    // }
+    if (filters?.loanProductId) {
+      queryBuilder.andWhere('application.loanProductId = :loanProductId', {
+        loanProductId: filters.loanProductId,
+      });
+    }
 
-    // if (filters?.minAmount !== undefined) {
-    //   queryBuilder.andWhere('application.requestedAmount >= :minAmount', {
-    //     minAmount: filters.minAmount,
-    //   });
-    // }
+    if (filters?.minAmount !== undefined) {
+      queryBuilder.andWhere('application.requestedAmount >= :minAmount', {
+        minAmount: filters.minAmount,
+      });
+    }
 
-    // if (filters?.maxAmount !== undefined) {
-    //   queryBuilder.andWhere('application.requestedAmount <= :maxAmount', {
-    //     maxAmount: filters.maxAmount,
-    //   });
-    // }
+    if (filters?.maxAmount !== undefined) {
+      queryBuilder.andWhere('application.requestedAmount <= :maxAmount', {
+        maxAmount: filters.maxAmount,
+      });
+    }
 
-    // if (filters?.fromDate) {
-    //   queryBuilder.andWhere('application.applicationDate >= :fromDate', {
-    //     fromDate: new Date(filters.fromDate),
-    //   });
-    // }
+    if (filters?.fromDate) {
+      queryBuilder.andWhere('application.applicationDate >= :fromDate', {
+        fromDate: new Date(filters.fromDate),
+      });
+    }
 
-    // if (filters?.toDate) {
-    //   queryBuilder.andWhere('application.applicationDate <= :toDate', {
-    //     toDate: new Date(filters.toDate),
-    //   });
-    // }
+    if (filters?.toDate) {
+      queryBuilder.andWhere('application.applicationDate <= :toDate', {
+        toDate: new Date(filters.toDate),
+      });
+    }
 
-    // if (filters?.search) {
-    //   queryBuilder.andWhere(
-    //     '(LOWER(application.applicationNumber) LIKE LOWER(:search) OR ' +
-    //       'LOWER(application.applicantId) LIKE LOWER(:search) OR ' +
-    //       'LOWER(COALESCE(application.remarks, \'\')) LIKE LOWER(:search))',
-    //     { search: `%${filters.search}%` },
-    //   );
-    // }
+    if (filters?.search) {
+      queryBuilder.andWhere(
+        '(LOWER(application.applicationNumber) LIKE LOWER(:search) OR ' +
+          'LOWER(application.applicantId) LIKE LOWER(:search) OR ' +
+          'LOWER(COALESCE(application.remarks, \'\')) LIKE LOWER(:search))',
+        { search: `%${filters.search}%` },
+      );
+    }
 
-    // // Apply sorting
-    // const sortBy = filters?.sortBy || 'createdAt';
-    // const sortOrder = filters?.sortOrder || 'DESC';
-    // const allowedSortFields = ['createdAt', 'applicationDate', 'requestedAmount', 'status', 'applicationNumber'];
-    // const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
-    // queryBuilder.orderBy(`application.${finalSortBy}`, sortOrder);
+    // Apply sorting
+    const sortBy = filters?.sortBy || 'createdAt';
+    const sortOrder = filters?.sortOrder || 'DESC';
+    const allowedSortFields = ['createdAt', 'applicationDate', 'requestedAmount', 'status', 'applicationNumber'];
+    const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    queryBuilder.orderBy(`application.${finalSortBy}`, sortOrder);
 
-    // // Get total count before pagination
-    // const total = await queryBuilder.getCount();
+    // Get total count before pagination
+    const total = await queryBuilder.getCount();
 
-    // // Apply pagination
-    // const page = filters?.page || 1;
-    // const limit = filters?.limit || 20;
-    // const skip = (page - 1) * limit;
-    // queryBuilder.skip(skip).take(limit);
+    // Apply pagination
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 20;
+    const skip = (page - 1) * limit;
+    queryBuilder.skip(skip).take(limit);
 
     // Execute query
     const data = await queryBuilder.getMany();
 
-    // // Calculate pagination metadata
-    // const totalPages = Math.ceil(total / limit);
-    // const hasNext = page < totalPages;
-    // const hasPrevious = page > 1;
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrevious = page > 1;
 
     return {
       data,
-      // total,
-      // page,
-      // limit,
-      // totalPages,
-      // hasNext,
-      // hasPrevious,
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNext,
+      hasPrevious,
     };
   }
 
@@ -210,9 +323,9 @@ export class LoanApplicationService {
     if (!companyId) {
       throw new BadRequestException('Company ID is required');
     }
-    this.logger.log("copmany id "+companyId)
+    this.logger.log("copmany id " + companyId)
     const application = await this.applicationRepository.findOne({
-      where: { id }, // Enforce company isolation
+      where: { id, companyId }, // Enforce company isolation
     });
     if (!application) {
       throw new NotFoundException(
@@ -289,7 +402,8 @@ export class LoanApplicationService {
     this.logger.log(`Loan application ${id} approved successfully`);
 
 
-       // Automatically create loan from approved application
+    // Automatically create loan from approved application
+    this.logger.log(`Checking auto-create loan: autoCreateLoan=${autoCreateLoan}, status=${savedApplication.status}, loanId=${savedApplication.loanId}`);
     if (autoCreateLoan && savedApplication.status === ApplicationStatus.APPROVED && !savedApplication.loanId) {
       try {
         const createdLoan = await this.createLoanFromApplication(id, companyId);
@@ -331,7 +445,7 @@ export class LoanApplicationService {
       // Don't throw - internal notification succeeded, webhook failure is logged
     }
 
- 
+
 
     return finalApplication;
   }
@@ -436,6 +550,7 @@ export class LoanApplicationService {
   ): Promise<Loan> {
     const application = await this.findOne(applicationId, companyId); // Verify company access
 
+    this.logger.log(`Creating loan from application ${applicationId} for company ${companyId}. Application Product ID: ${application.loanProductId}`);
     // Business Rule: Only approved applications can create loans
     if (application.status !== ApplicationStatus.APPROVED) {
       throw new BadRequestException(
@@ -493,7 +608,7 @@ export class LoanApplicationService {
     const applicationDate = application.applicationDate instanceof Date
       ? application.applicationDate
       : new Date(application.applicationDate);
-    
+
     const createLoanDto: CreateLoanDto = {
       loanNumber: await this.generateLoanNumber(),
       companyId: application.companyId,
@@ -512,9 +627,9 @@ export class LoanApplicationService {
       repaymentFrequency: application.repaymentFrequency as any,
       repaymentStartDate: application.repaymentStartDate
         ? (application.repaymentStartDate instanceof Date
-            ? application.repaymentStartDate
-            : new Date(application.repaymentStartDate)
-          ).toISOString().split('T')[0]
+          ? application.repaymentStartDate
+          : new Date(application.repaymentStartDate)
+        ).toISOString().split('T')[0]
         : undefined,
       repaymentMethod: application.repaymentMethod,
       repaymentStructure: application.repaymentStructure, // Use borrower's selected structure
@@ -636,7 +751,7 @@ export class LoanApplicationService {
       // Determine segment based on loan product or amount (if available)
       // This could be enhanced to automatically detect segment
       const segment = this.determineSegment(application);
-      
+
       // Calculate weighted score with segment-specific weights
       // Include trigger for history tracking
       const scoringResult = await this.weightedScoringService.calculateWeightedScore(

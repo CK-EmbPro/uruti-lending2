@@ -743,9 +743,6 @@ async function seedMicroLendingProducts() {
         company = await companyService.create({
           name: 'Uruti Lending Company',
           code: 'URUTI',
-          email: 'info@urutilending.com',
-          address: '123 Financial Street, Business District',
-          phone: '+1-555-0123',
         });
       logger.log(`Created default company: ${company.name}`);
     }

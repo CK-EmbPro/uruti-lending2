@@ -39,7 +39,7 @@ import { Public } from '../../common/decorators/public.decorator';
 @ApiTags('loan-applications')
 @ApiBearerAuth('JWT-auth')
 @Controller('loan-applications')
-@UseGuards(JwtAuthGuard, 
+@UseGuards(JwtAuthGuard,
   // CompanyGuard
 ) // JWT auth first, then multi-tenancy
 export class LoanApplicationController {
@@ -48,7 +48,7 @@ export class LoanApplicationController {
     private readonly loanApplicationSeedService: LoanApplicationSeedService,
     private readonly applicationRecoveryService: ApplicationRecoveryService,
     private readonly integrationService: LoanApplicationIntegrationService,
-  ) {}
+  ) { }
 
   @Post()
   // @Public()
@@ -200,6 +200,7 @@ export class LoanApplicationController {
     @Request() req?: any,
   ) {
     const companyId = req?.user?.companyId || req?.companyId;
+    console.log(`[LoanApplicationController] Approving application ${id} for company ${companyId}`);
     return this.loanApplicationService.approve(
       id,
       companyId,
@@ -353,7 +354,7 @@ export class LoanApplicationController {
     const companyId = req.user?.companyId || req.companyId;
     const isAbandoned = await this.applicationRecoveryService.isAbandoned(id);
     const application = await this.loanApplicationService.findOne(id, companyId);
-    
+
     if (!application) {
       return { isAbandoned: false, error: 'Application not found' };
     }
