@@ -797,8 +797,8 @@ export default function LoanApplicationsPage() {
                             <div className="flex items-center gap-1">
                               <Percent className="w-3 h-3 text-gray-400 flex-shrink-0" />
                               <span className="text-xs text-gray-700 font-medium">
-                                {app.rateOfInterest
-                                  ? `${app.rateOfInterest}%`
+                                {product?.rateOfInterest
+                                  ? `${product?.rateOfInterest}%`
                                   : "N/A"}
                               </span>
                             </div>

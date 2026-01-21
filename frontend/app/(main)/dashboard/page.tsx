@@ -96,9 +96,9 @@ export default function DashboardPage() {
   // Calculate comprehensive statistics
   const stats = useMemo(() => {
     const totalLoans = loans.length;
-    const totalLoanAmount = loans.reduce((sum, loan) => sum + (loan.loanAmount || 0), 0);
-    const totalDisbursed = loans.reduce((sum, loan) => sum + (loan.disbursedAmount || 0), 0);
-    const totalPaid = loans.reduce((sum, loan) => sum + (loan.totalAmountPaid || 0), 0);
+    const totalLoanAmount = loans.reduce((sum, loan) => sum + Number(loan.loanAmount || 0), 0);
+    const totalDisbursed = loans.reduce((sum, loan) => sum + Number(loan.disbursedAmount || 0), 0);
+    const totalPaid = loans.reduce((sum, loan) => sum + Number(loan.totalAmountPaid || 0), 0);
     const outstandingBalance = totalDisbursed - totalPaid;
     
     const activeLoans = loans.filter(
@@ -233,7 +233,7 @@ export default function DashboardPage() {
 
   const COLORS = ['#0A4DAA', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
-  const userName = user?.name?.split(' ')[0] || 'User';
+  const userName = user?.name || 'User';
   const isLoading = loansLoading || applicationsLoading || repaymentsLoading;
   
   // Log loading completion
@@ -254,7 +254,7 @@ export default function DashboardPage() {
       <div className="flex flex-wrap justify-between items-start gap-4 mb-8">
         <div>
           <h1 className="text-text-light dark:text-text-dark text-4xl font-black leading-tight tracking-[-0.033em] mb-2">
-            Welcome back, {userName}! 👋
+            Welcome back, {userName} ! 👋
           </h1>
           <p className="text-subtext-light dark:text-subtext-dark text-base">
             Here's your comprehensive overview of the lending platform today.
@@ -300,7 +300,7 @@ export default function DashboardPage() {
                     {stats.totalLoans}
                   </p>
                   <p className="text-subtext-light dark:text-subtext-dark text-xs">
-                    ${(stats.totalLoanAmount / 1000).toFixed(0)}K total value
+                    ${(stats.totalLoanAmount / 1000).toFixed(1)}K total value
                   </p>
                 </div>
               </div>
@@ -326,7 +326,7 @@ export default function DashboardPage() {
                     {stats.activeLoans}
                   </p>
                   <p className="text-subtext-light dark:text-subtext-dark text-xs">
-                    ${(stats.totalDisbursed / 1000).toFixed(0)}K disbursed
+                    ${(stats.totalDisbursed / 1000).toFixed(1)}K disbursed
                   </p>
                 </div>
               </div>

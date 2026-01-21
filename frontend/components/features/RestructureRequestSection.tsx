@@ -116,7 +116,7 @@ export function RestructureRequestSection({
         <Button
           variant="outline"
           onClick={() => setShowRequestModal(true)}
-          className="w-full"
+          className="w-full flex items-center"
         >
           <Plus className="w-4 h-4 mr-2" />
           Request Restructure

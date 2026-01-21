@@ -104,7 +104,7 @@ export function PaymentHolidaySection({ loanId, onRequestHoliday }: PaymentHolid
           <Button
             variant="outline"
             onClick={onRequestHoliday}
-            className="w-full"
+            className="w-full flex items-center"
           >
             <Plus className="w-4 h-4 mr-2" />
             Request Payment Holiday

@@ -117,7 +117,7 @@ export function LoanModificationSection({ loanId }: LoanModificationSectionProps
         <Button
           variant="outline"
           onClick={() => setShowRequestModal(true)}
-          className="w-full"
+          className="w-full flex items-center gap-1"
         >
           <Plus className="w-4 h-4 mr-2" />
           Request Modification

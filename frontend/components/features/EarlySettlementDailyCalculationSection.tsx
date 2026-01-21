@@ -98,7 +98,7 @@ export function EarlySettlementDailyCalculationSection({
         <Button
           variant="outline"
           onClick={() => setShowCalculateModal(true)}
-          className="w-full"
+          className="w-full flex items-center gap-1"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           Calculate Daily Payoffs

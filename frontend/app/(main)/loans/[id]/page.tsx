@@ -8,12 +8,12 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Alert } from '@/components/ui/Alert';
 import Link from 'next/link';
-import { 
-  Download, 
-  CheckCircle, 
-  Clock, 
-  ChevronRight, 
-  Mail, 
+import {
+  Download,
+  CheckCircle,
+  Clock,
+  ChevronRight,
+  Mail,
   MessageSquare,
   FileText,
   Receipt,
@@ -51,7 +51,7 @@ export default function LoanDetailPage() {
   const { data: repaymentsResponse } = useRepayments({ loanId, limit: 100, sortBy: 'postingDate', sortOrder: 'DESC' });
   const repayments = repaymentsResponse?.data || [];
   const { data: loanProduct } = useLoanProduct(loan?.loanProductId || '');
-  
+
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [reminderChannel, setReminderChannel] = useState<'email' | 'sms'>('email');
   const [reminderTiming, setReminderTiming] = useState('3 days before due date');
@@ -93,8 +93,8 @@ export default function LoanDetailPage() {
   const loanAmount = loan.loanAmount || 0;
   const totalPrincipalPaid = loan.totalPrincipalPaid || 0;
   const remainingBalance = loanAmount - totalPrincipalPaid;
-  const progressPercent = loanAmount > 0 
-    ? Math.round((totalPrincipalPaid / loanAmount) * 100) 
+  const progressPercent = loanAmount > 0
+    ? Math.round((totalPrincipalPaid / loanAmount) * 100)
     : 0;
 
   // Get next payment (simplified - would need schedule calculation)
@@ -221,7 +221,7 @@ export default function LoanDetailPage() {
                     </p>
                   </div>
                   <div className="w-full rounded bg-primary/10 h-2">
-                    <div 
+                    <div
                       className="h-2 rounded bg-primary transition-all"
                       style={{ width: `${progressPercent}%` }}
                     />
@@ -303,14 +303,17 @@ export default function LoanDetailPage() {
                       </p>
                     </div>
                   </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={remindersEnabled}
-                      onChange={(e) => setRemindersEnabled(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-green-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-500/50"></div>
+                  <label className="flex cursor-pointer items-center">
+                    <div className='relative'>
+
+                      <input 
+                        type="checkbox"
+                        checked={remindersEnabled}
+                        onChange={(e) => setRemindersEnabled(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-green-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-500/50"></div>
+                    </div>
                     <span className="ms-3 text-sm font-medium text-gray-900">Reminders On</span>
                   </label>
                 </div>
@@ -326,11 +329,10 @@ export default function LoanDetailPage() {
                         <button
                           type="button"
                           onClick={() => setReminderChannel('email')}
-                          className={`relative inline-flex flex-1 items-center justify-center gap-2 rounded-l-md px-4 py-2 text-sm font-medium ring-1 ring-inset focus:z-10 focus:ring-2 focus:ring-inset transition-colors ${
-                            reminderChannel === 'email'
+                          className={`relative inline-flex flex-1 items-center justify-center gap-2 rounded-l-md px-4 py-2 text-sm font-medium ring-1 ring-inset focus:z-10 focus:ring-2 focus:ring-inset transition-colors ${reminderChannel === 'email'
                               ? 'bg-primary text-white ring-primary focus:ring-primary'
                               : 'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 focus:ring-primary'
-                          }`}
+                            }`}
                         >
                           <Mail className="w-4 h-4" />
                           <span>Email</span>
@@ -338,11 +340,10 @@ export default function LoanDetailPage() {
                         <button
                           type="button"
                           onClick={() => setReminderChannel('sms')}
-                          className={`relative -ml-px inline-flex flex-1 items-center justify-center gap-2 rounded-r-md px-4 py-2 text-sm font-medium ring-1 ring-inset focus:z-10 focus:ring-2 focus:ring-inset transition-colors ${
-                            reminderChannel === 'sms'
+                          className={`relative -ml-px inline-flex flex-1 items-center justify-center gap-2 rounded-r-md px-4 py-2 text-sm font-medium ring-1 ring-inset focus:z-10 focus:ring-2 focus:ring-inset transition-colors ${reminderChannel === 'sms'
                               ? 'bg-primary text-white ring-primary focus:ring-primary'
                               : 'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50 focus:ring-primary'
-                          }`}
+                            }`}
                         >
                           <MessageSquare className="w-4 h-4" />
                           <span>SMS</span>
@@ -632,7 +633,7 @@ export default function LoanDetailPage() {
             <LoanModificationSection loanId={loanId} />
 
             {/* Payment Holiday Section */}
-            <PaymentHolidaySection 
+            <PaymentHolidaySection
               loanId={loanId}
               onRequestHoliday={() => {
                 // Navigate to modification request with payment holiday pre-selected

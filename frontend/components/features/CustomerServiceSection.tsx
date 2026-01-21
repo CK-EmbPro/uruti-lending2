@@ -71,19 +71,19 @@ export function CustomerServiceSection({ loanId }: CustomerServiceSectionProps) 
         <div className="p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Service Requests</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Button variant="outline" size="sm" onClick={() => setShowExtensionModal(true)}>
+            <Button className='flex items-center gap-1' variant="outline" size="sm" onClick={() => setShowExtensionModal(true)}>
               <Calendar className="w-4 h-4 mr-2" />
               Payment Extension
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowDisputeModal(true)}>
+            <Button className='flex items-center gap-1' variant="outline" size="sm" onClick={() => setShowDisputeModal(true)}>
               <AlertCircle className="w-4 h-4 mr-2" />
               Dispute
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowAccountUpdateModal(true)}>
+            <Button className='flex items-center gap-1' variant="outline" size="sm" onClick={() => setShowAccountUpdateModal(true)}>
               <User className="w-4 h-4 mr-2" />
               Update Account
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowFeeWaiverModal(true)}>
+            <Button className='flex items-center gap-1' variant="outline" size="sm" onClick={() => setShowFeeWaiverModal(true)}>
               <DollarSign className="w-4 h-4 mr-2" />
               Fee Waiver
             </Button>

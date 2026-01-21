@@ -49,13 +49,13 @@ export default function LoansPage() {
   // Calculate statistics
   const stats = useMemo(() => {
     const totalLoans = loans.length;
-    const totalAmount = loans.reduce((sum, loan) => sum + loan.loanAmount, 0);
-    const totalDisbursed = loans.reduce((sum, loan) => sum + loan.disbursedAmount, 0);
+    const totalAmount = loans.reduce((sum, loan) => sum + Number(loan.loanAmount), 0);
+    const totalDisbursed = loans.reduce((sum, loan) => sum + Number(loan.disbursedAmount), 0);
     const activeLoans = loans.filter(
       (loan) => loan.status === 'Active' || loan.status === 'Disbursed' || loan.status === 'Partially Disbursed'
     ).length;
     const closedLoans = loans.filter((loan) => loan.status === 'Closed').length;
-    const totalPaid = loans.reduce((sum, loan) => sum + loan.totalAmountPaid, 0);
+    const totalPaid = loans.reduce((sum, loan) => sum + Number(loan.totalAmountPaid), 0);
     const outstandingAmount = totalDisbursed - totalPaid;
 
     return {
@@ -123,7 +123,7 @@ export default function LoansPage() {
             </p>
           </div>
           <Link href="/loans/new">
-            <Button className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-shadow">
+            <Button className="w-full flex items-center gap-1 sm:w-auto shadow-lg hover:shadow-xl transition-shadow">
               <Plus className="w-4 h-4 mr-2" />
               New Loan
             </Button>
@@ -150,7 +150,7 @@ export default function LoansPage() {
                 <div>
                   <p className="text-sm font-medium text-green-700 mb-1">Total Amount</p>
                   <p className="text-2xl md:text-3xl font-bold text-green-900">
-                    ${(stats.totalAmount / 1000).toFixed(0)}K
+                    ${(stats.totalAmount / 1000).toFixed(1)}K
                   </p>
                 </div>
                 <div className="p-3 bg-green-200 rounded-lg">
@@ -176,7 +176,7 @@ export default function LoansPage() {
                 <div>
                   <p className="text-sm font-medium text-orange-700 mb-1">Outstanding</p>
                   <p className="text-2xl md:text-3xl font-bold text-orange-900">
-                    ${(stats.outstandingAmount / 1000).toFixed(0)}K
+                    ${(stats.outstandingAmount / 1000).toFixed(1)}K
                   </p>
                 </div>
                 <div className="p-3 bg-orange-200 rounded-lg">
@@ -217,7 +217,7 @@ export default function LoansPage() {
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
               className={cn(
-                'shadow-sm hover:shadow-md transition-shadow',
+                'shadow-sm flex items-center gap-1 hover:shadow-md transition-shadow',
                 showFilters && 'bg-blue-50 border-blue-300'
               )}
             >
@@ -353,7 +353,7 @@ export default function LoansPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="space-y-1">
+                          <div className="space-y-1 flex items-center">
                             <span className="font-semibold text-gray-900">
                               ${loan.loanAmount.toLocaleString()}
                             </span>
@@ -428,7 +428,7 @@ export default function LoansPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-colors"
+                                className="flex items-center group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-colors"
                               >
                                 View
                                 <ArrowUpRight className="w-3.5 h-3.5 ml-1.5" />

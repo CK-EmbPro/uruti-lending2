@@ -195,7 +195,7 @@ export function PartialPaymentSection({ loanId, nextPaymentAmount = 0 }: Partial
         <Button
           variant="outline"
           onClick={() => setShowCreateModal(true)}
-          className="w-full"
+          className="w-full flex items-center gap-1 "
         >
           <Plus className="w-4 h-4 mr-2" />
           Create Partial Payment

@@ -140,7 +140,7 @@ export function AutopaySection({ loanId }: AutopaySectionProps) {
           <Alert variant="info" title="No Autopay Enrollment">
             Enroll in autopay to automatically make payments on your due date.
           </Alert>
-          <Button onClick={() => setShowEnrollModal(true)} className="w-full">
+          <Button onClick={() => setShowEnrollModal(true)} className="w-full flex items-center gap-1">
             <Plus className="w-4 h-4 mr-2" />
             Enroll in Autopay
           </Button>
