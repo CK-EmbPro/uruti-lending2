@@ -15,14 +15,14 @@ export class UserSeedService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
-  ) {}
+  ) { }
 
   /**
    * Get or create a default company for seeding
    */
   private async getOrCreateDefaultCompany(): Promise<Company> {
     let company = await this.companyRepository.findOne({ where: { code: 'URUTI' } });
-    
+
     if (!company) {
       this.logger.log('Creating Uruti Lending Company for seeding...');
       company = this.companyRepository.create({
@@ -32,7 +32,7 @@ export class UserSeedService {
       });
       company = await this.companyRepository.save(company);
     }
-    
+
     return company;
   }
 
@@ -82,14 +82,27 @@ export class UserSeedService {
           roles: ['approver'],
           isActive: true,
         },
-
+        {
+          email: 'underwriter@urutilending.com',
+          password: 'underwriter123',
+          name: 'Loan Underwriter',
+          roles: ['loan_underwriter'],
+          isActive: true,
+        },
+        {
+          email: 'senior.underwriter@urutilending.com',
+          password: 'senior123',
+          name: 'Senior Underwriter',
+          roles: ['senior_underwriter'],
+          isActive: true,
+        },
       ];
 
       const defaultCompany = await this.getOrCreateDefaultCompany();
 
       for (const userData of users) {
         const hashedPassword = await bcrypt.hash(userData.password, 10);
-        
+
         const user = this.userRepository.create({
           email: userData.email,
           password: hashedPassword,
@@ -148,6 +161,20 @@ export class UserSeedService {
           roles: ['approver'],
           isActive: true,
         },
+        {
+          email: 'underwriter@urutilending.com',
+          password: 'underwriter123',
+          name: 'Loan Underwriter',
+          roles: ['loan_underwriter'],
+          isActive: true,
+        },
+        {
+          email: 'senior.underwriter@urutilending.com',
+          password: 'senior123',
+          name: 'Senior Underwriter',
+          roles: ['senior_underwriter'],
+          isActive: true,
+        },
       ];
 
       for (const userData of users) {
@@ -168,7 +195,7 @@ export class UserSeedService {
         }
 
         const hashedPassword = await bcrypt.hash(userData.password, 10);
-        
+
         const user = this.userRepository.create({
           email: userData.email,
           password: hashedPassword,

@@ -694,7 +694,7 @@ export class LoanApplicationService {
     queryRunner: import('typeorm').QueryRunner,
     application: LoanApplication,
     companyId: string,
-    submit: boolean = false,
+    submit: boolean = true,
   ): Promise<Loan> {
     this.logger.log(`Creating loan from application ${application.id} for company ${companyId} (transactional). Application Product ID: ${application.loanProductId}`);
 

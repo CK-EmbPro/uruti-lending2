@@ -14,7 +14,7 @@ export class PermissionSeedService {
     private readonly permissionRepository: Repository<Permission>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
-  ) {}
+  ) { }
 
   /**
    * Seed default permissions for the system
@@ -276,6 +276,31 @@ export class PermissionSeedService {
             ...getPerms('payment', ['read']),
             ...getPerms('report', ['read', 'export']),
             ...getPerms('compliance', ['read']),
+          ],
+        },
+        {
+          name: 'Loan Underwriter',
+          roleType: RoleType.LOAN_OFFICER,
+          description: 'Can perform underwriting reviews and approve loan applications',
+          permissions: [
+            ...getPerms('loan-application', ['read', 'update', 'approve', 'reject']),
+            ...getPerms('loan', ['read', 'update', 'submit', 'approve']),
+            ...getPerms('underwriting-review', ['create', 'read', 'update', 'approve']),
+            ...getPerms('customer', ['read']),
+            ...getPerms('report', ['read']),
+          ],
+        },
+        {
+          name: 'Senior Underwriter',
+          roleType: RoleType.FINANCE_MANAGER,
+          description: 'Can perform complex underwriting reviews and override decisions',
+          permissions: [
+            ...getPerms('loan-application', ['read', 'update', 'approve', 'reject']),
+            ...getPerms('loan', ['create', 'read', 'update', 'submit', 'approve', 'disburse']),
+            ...getPerms('underwriting-review', ['create', 'read', 'update', 'approve', 'override']),
+            ...getPerms('decision-override', ['create', 'read', 'update', 'approve']),
+            ...getPerms('customer', ['read', 'update']),
+            ...getPerms('report', ['read', 'generate', 'export']),
           ],
         },
 
