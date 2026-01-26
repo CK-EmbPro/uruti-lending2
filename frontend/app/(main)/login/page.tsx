@@ -33,8 +33,8 @@ export default function LoginPage() {
 
       // Role-based redirection
       const userRoles = user.roles || [];
-      const isStaff = userRoles.some((role: string) => 
-        ['admin', 'loan_officer', 'manager', 'approver'].includes(role)
+      const isStaff = userRoles.some((role: string) =>
+        ['admin', 'loan_officer', 'manager', 'approver', 'loan_underwriter', 'senior_underwriter'].includes(role)
       );
 
       if (isStaff) {
@@ -49,7 +49,7 @@ export default function LoginPage() {
       setIsSubmitting(false);
 
       let errorMessage = error.response?.data?.message || error.message || "Login failed";
-      
+
       if (error?.code === "ECONNABORTED") {
         errorMessage = "Connection timeout. Please try again.";
       } else if (!error?.response && error?.request) {
@@ -76,8 +76,8 @@ export default function LoginPage() {
 
   // Redirect if already authenticated
   if (isAuthenticated && user) {
-    const isStaff = user.roles?.some(role => 
-      ['admin', 'loan_officer', 'manager', 'approver'].includes(role)
+    const isStaff = user.roles?.some(role =>
+      ['admin', 'loan_officer', 'manager', 'approver', 'loan_underwriter', 'senior_underwriter'].includes(role)
     );
     router.replace(isStaff ? "/dashboard" : "/portal/dashboard");
     return null;

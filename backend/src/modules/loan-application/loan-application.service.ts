@@ -694,7 +694,7 @@ export class LoanApplicationService {
     queryRunner: import('typeorm').QueryRunner,
     application: LoanApplication,
     companyId: string,
-    submit: boolean = true,
+    submit: boolean = false,
   ): Promise<Loan> {
     this.logger.log(`Creating loan from application ${application.id} for company ${companyId} (transactional). Application Product ID: ${application.loanProductId}`);
 
@@ -733,7 +733,7 @@ export class LoanApplicationService {
 
     // Business Rule: For secured loans, validate against maximum loan amount
     if (application.isSecuredLoan && application.maximumLoanAmount) {
-      if (loanAmount > application.maximumLoanAmount) {
+      if (Number(loanAmount) > Number(application.maximumLoanAmount)) {
         throw new BadRequestException(
           `Loan amount (${loanAmount}) cannot exceed maximum loan amount from securities (${application.maximumLoanAmount})`,
         );
@@ -743,7 +743,7 @@ export class LoanApplicationService {
     // Business Rule: Validate loan amount against product maximum
     if (
       loanProduct.maximumLoanAmount &&
-      loanAmount > loanProduct.maximumLoanAmount
+      Number(loanAmount) > Number(loanProduct.maximumLoanAmount)
     ) {
       throw new BadRequestException(
         `Loan amount (${loanAmount}) exceeds maximum loan amount of product (${loanProduct.maximumLoanAmount})`,
